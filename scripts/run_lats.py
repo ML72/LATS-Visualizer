@@ -21,8 +21,8 @@ startup, so use it when you mean to change what ships.
 
 With the default ``--llm mock`` policy this needs no API key and no network,
 and the same seed always produces the same trace, byte for byte. ``--llm openai``
-swaps in a real model, reading ``OPENAI_API_KEY`` from the environment; see the
-README before using it.
+swaps in a real model, reading ``OPENAI_API_KEY`` from the environment or from
+a ``.env`` file at the repository root; see the README before using it.
 """
 
 from __future__ import annotations
@@ -38,7 +38,8 @@ SCRIPTS = Path(__file__).resolve().parent
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from run_lats import LATS, Config, TASKS  # noqa: E402
+from run_lats import LATS, SCHEMA, Config, TASKS  # noqa: E402
+from run_lats.env import load_env  # noqa: E402
 from run_lats.llm import POLICIES, OpenAILLM, build_policy  # noqa: E402
 from run_lats.trace import TraceRecorder  # noqa: E402
 
@@ -50,9 +51,21 @@ PUBLIC_TRACES = ROOT / "public" / "traces"
 
 MANIFEST_SCHEMA = "lats-trace-manifest/1"
 
-#: The traces that ship with the viewer. Two of them are ablations, which is
-#: the point: the interesting thing about a knob is what happens when you turn
-#: it.
+
+def trace_name(base: str, llm: str) -> str:
+    """``game_of_24`` + ``openai`` -> ``openai_game_of_24``.
+
+    Which policy produced a trace is the first thing you want to know about it
+    and the easiest thing to lose track of, so it goes in the name rather than
+    only inside the file. Deriving it from ``--llm`` means a trace cannot be
+    mislabelled by hand.
+    """
+    return base if base.startswith(f"{llm}_") else f"{llm}_{base}"
+
+
+#: The offline traces that ship with the viewer. Three of them are ablations,
+#: which is the point: the interesting thing about a knob is what happens when
+#: you turn it.
 PRESETS: list[dict] = [
     {
         "name": "merge_intervals",
@@ -94,6 +107,19 @@ PRESETS: list[dict] = [
             "the full search and never finds 24 at all."
         ),
         "overrides": {"w": 0.0},
+    },
+    {
+        "name": "game_of_24_hard",
+        "task": "game_of_24_hard",
+        "note": (
+            "6, 9, 9, 10, where the twelve best-looking first moves are all dead "
+            "ends and every solution ends in 9 + 15. The offline policy rates a "
+            "fraction badly and never proposes the moves that reach 15, so "
+            "sixteen iterations of correct search find nothing. Search cannot "
+            "choose what the policy never suggests - compare the OpenAI run on "
+            "the same puzzle."
+        ),
+        "overrides": {},
     },
     {
         "name": "multihop_qa",
@@ -210,9 +236,31 @@ def write_manifest(folder: Path, entries: list[dict]) -> Path:
 
 
 def preset_order(entries: list[dict]) -> list[dict]:
-    """Bundled traces in their curated order; anything hand-run after them."""
+    """The offline presets in their curated order, then everything else.
+
+    Names carry a policy prefix, so the curated index is looked up on what
+    follows it; a trace from any other policy sorts after the whole preset set.
+    """
     order = {p["name"]: i for i, p in enumerate(PRESETS)}
-    return sorted(entries, key=lambda e: (order.get(e["name"], 999), e["name"]))
+
+    def rank(base: str) -> int:
+        """The curated index, matching on the longest preset name that fits.
+
+        A variant like ``game_of_24_hard_wide`` is not a preset itself, but it
+        belongs beside ``game_of_24_hard`` rather than at the end of the list.
+        """
+        if base in order:
+            return order[base]
+        prefixes = [n for n in order if base.startswith(f"{n}_")]
+        return order[max(prefixes, key=len)] if prefixes else len(PRESETS)
+
+    def key(entry: dict) -> tuple:
+        base = entry["name"].split("_", 1)[-1]
+        return (0 if entry.get("policy") == "mock" else 1,
+                rank(base),
+                entry["name"])
+
+    return sorted(entries, key=key)
 
 
 def destination(args: argparse.Namespace) -> Path:
@@ -241,6 +289,58 @@ def report(folder: Path, count: int, args: argparse.Namespace) -> None:
               "or re-run with --publish to make it part of the bundled set.")
 
 
+def promote(source: Path, name: str | None, note: str | None) -> int:
+    """Copy a trace that already exists into ``public/traces/`` and index it.
+
+    A run against a real model costs money and minutes and is not reproducible,
+    so deciding after the fact that one is worth shipping should not mean
+    running it again. The trace keeps the name it was written with - which
+    already carries its policy prefix - unless ``--name`` overrides it.
+    """
+    if not source.is_file():
+        raise SystemExit(f"no such trace: {source}")
+    try:
+        doc = json.loads(source.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise SystemExit(f"{source} is not readable as a trace: {exc}") from exc
+    if doc.get("schema") != SCHEMA:
+        raise SystemExit(
+            f"{source} says schema {doc.get('schema')!r}; expected {SCHEMA!r}.")
+
+    final = name or doc.get("name") or source.stem
+    doc["name"] = final
+    PUBLIC_TRACES.mkdir(parents=True, exist_ok=True)
+    target = PUBLIC_TRACES / f"{final}.json"
+    target.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+
+    entry = {
+        "file": target.name,
+        "name": final,
+        "task": doc["task"]["id"],
+        "title": doc["task"]["title"],
+        "family": doc["task"]["family"],
+        "solved": doc["result"]["solved"],
+        "best_reward": doc["result"]["best_reward"],
+        "nodes": doc["result"]["nodes"],
+        "steps": len(doc["steps"]),
+        "policy": doc["policy"]["kind"],
+    }
+    if note:
+        entry["note"] = note
+    elif (old := next((e for e in read_manifest(PUBLIC_TRACES)
+                       if e["file"] == target.name), None)) and old.get("note"):
+        entry["note"] = old["note"]        # keep the description on a re-promote
+
+    kept = [e for e in read_manifest(PUBLIC_TRACES) if e["file"] != target.name]
+    write_manifest(PUBLIC_TRACES, preset_order(kept + [entry]))
+    print(f"promoted {display(source)}\n      -> {display(target)}"
+          f"  ({target.stat().st_size // 1024} kB, "
+          f"{'solved' if entry['solved'] else 'not solved'})")
+    if not note and "note" not in entry:
+        print("      no --note given, so the picker will show this one bare.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description=__doc__,
@@ -251,10 +351,16 @@ def main(argv: list[str] | None = None) -> int:
                    help="list tasks and presets, then exit")
     p.add_argument("--publish", action="store_true",
                    help="write into public/traces/, the set the viewer ships with")
+    p.add_argument("--promote", type=Path, metavar="TRACE",
+                   help="add an existing trace file to public/traces/ instead of "
+                        "running a search (use --note to describe it)")
     p.add_argument("--out", type=Path,
                    help="write the trace here instead (single-task runs)")
     p.add_argument("--name",
                    help="name recorded inside the trace, and its filename")
+    p.add_argument("--note",
+                   help="one line on what this trace is for; the viewer's "
+                        "picker shows it under the name")
 
     g = p.add_argument_group("search")
     g.add_argument("--n", type=int, help="samples per expansion (paper: 5)")
@@ -280,6 +386,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("-q", "--quiet", action="store_true")
     args = p.parse_args(argv)
 
+    # A key in .env beats having to export one every session; anything already
+    # exported still wins. Names only in the message - never the value.
+    from_env_file = load_env(ROOT / ".env")
+    if from_env_file and args.llm != "mock" and not args.quiet:
+        print(f"read {', '.join(from_env_file)} from .env")
+
     if args.list:
         print("tasks:")
         for task_id, cls in sorted(TASKS.items()):
@@ -293,6 +405,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {preset['name']:<32} {preset['task']}  [{extra}]")
         return 0
 
+    if args.promote:
+        return promote(args.promote, args.name, args.note)
+
     if args.out and not args.task:
         raise SystemExit("--out applies to a single-task run; add --task.")
 
@@ -302,7 +417,7 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(
                 f"unknown task {args.task!r}. Known: {', '.join(sorted(TASKS))}"
             )
-        name = args.name or args.task
+        name = trace_name(args.name or args.task, args.llm)
         out = args.out or destination(args) / f"{name}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         if not args.quiet:
@@ -318,6 +433,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         # Keep the folder's index in step with what is on disk, so a hand-run
         # trace shows up in the picker next to the bundled ones.
+        if args.note:
+            entry["note"] = args.note
         kept = [e for e in read_manifest(out.parent) if e["file"] != entry["file"]]
         write_manifest(out.parent, preset_order(kept + [entry]))
         if not args.quiet:
@@ -334,8 +451,8 @@ def main(argv: list[str] | None = None) -> int:
         entry = run_one(
             preset["task"],
             cfg,
-            name=preset["name"],
-            out=folder / f"{preset['name']}.json",
+            name=trace_name(preset["name"], args.llm),
+            out=folder / f"{trace_name(preset['name'], args.llm)}.json",
             llm=args.llm,
             model=args.model,
             quiet=args.quiet,
@@ -343,7 +460,13 @@ def main(argv: list[str] | None = None) -> int:
         entry["note"] = preset["note"]
         entries.append(entry)
 
-    write_manifest(folder, entries)
+    # Keep any trace this run did not write - a published OpenAI trace, say -
+    # so regenerating the offline set does not evict it from the picker. Stale
+    # entries whose file is gone are dropped on the way past.
+    written = {e["file"] for e in entries}
+    kept = [e for e in read_manifest(folder)
+            if e["file"] not in written and (folder / e["file"]).is_file()]
+    write_manifest(folder, preset_order(kept + entries))
     if not args.quiet:
         report(folder, len(entries), args)
     return 0

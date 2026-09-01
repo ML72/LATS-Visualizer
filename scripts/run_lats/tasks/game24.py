@@ -45,8 +45,24 @@ _STEP = re.compile(r"^\s*(-?\d+(?:/\d+)?)\s*([+\-*/])\s*(-?\d+(?:/\d+)?)\s*$")
 
 
 def _operands(text: str) -> tuple[Fraction, str, Fraction] | None:
-    """Split ``a op b`` into its parts, or ``None`` if it is not one."""
-    normalised = text.replace("×", "*").replace("x", "*").replace("÷", "/")
+    """Split ``a op b`` into its parts, or ``None`` if it is not one.
+
+    Forgiving about spelling, strict about shape. Models write the same step as
+    ``8 / 3``, ``(8/3)`` or ``8 ÷ 3``, and all three mean one move; they also
+    write ``(8/8) + 3*3``, which means a whole solution and is not a move at
+    all. The first three are accepted and the fourth is not.
+    """
+    normalised = text.replace("×", "*").replace("x", "*").replace("÷", "/").strip()
+    # Peel off brackets that wrap the whole step. A bracket that closes early -
+    # as in "(8/8) + 3" - is left alone, so the regex still rejects it.
+    while normalised.startswith("(") and normalised.endswith(")"):
+        depth = 0
+        for i, ch in enumerate(normalised):
+            depth += (ch == "(") - (ch == ")")
+            if depth == 0 and i < len(normalised) - 1:
+                return None if _STEP.match(normalised) is None else _operands(normalised)
+        normalised = normalised[1:-1].strip()
+
     match = _STEP.match(normalised)
     if not match:
         return None
@@ -250,9 +266,13 @@ class Game24Task(Task):
 
     def action_schema(self) -> str:
         return (
-            'Return JSON: {"candidates": [{"expr": "a op b = c", "self_eval": '
-            "0.0-1.0}]}, one arithmetic step per candidate, using two of the "
-            "numbers that are left."
+            'Return JSON and nothing else: {"candidates": [{"expr": "a op b = '
+            'c", "self_eval": 0.0-1.0}]}. '
+            "Each candidate is ONE step that combines exactly two of the "
+            'numbers still left, written plainly: "8 / 3 = 8/3". Not a whole '
+            'solution like "8/(3-8/3)", and not a bracketed fragment like '
+            '"(8/3)". Fractions are allowed. self_eval is your own estimate, '
+            "from 0 to 1, that this step leads to 24."
         )
 
     def parse_action(self, obj: dict, data: dict) -> Action:
@@ -307,3 +327,45 @@ class Game24Task(Task):
             f"{trail} ends at {final}, not {TARGET}. "
             f"Do not open with that step again. | {steps[0]}"
         )
+
+
+class Game24HardTask(Game24Task):
+    """The same environment, on a puzzle chosen to break value functions.
+
+    Every route from 6, 9, 9, 10 to 24 ends the same way, ``9 + 15``, and the
+    only ways to reach 15 are a fraction or a number far bigger than the
+    target::
+
+        6 / 9 = 2/3    ->   10 / 2/3 = 15   ->   9 + 15 = 24
+        9 * 10 = 90    ->   90 / 6 = 15     ->   9 + 15 = 24
+
+    :func:`tidiness` ranks first moves by how tidy the result looks - whole,
+    small, a factor of 24 - and on this puzzle **its top twelve are all dead
+    ends**. The trap is sharpest at rank 5: ``6 + 9 = 15`` makes exactly the
+    number every solution needs, and loses, because it spends the 9 that the
+    last step requires. A language model grading one step at a time falls for
+    the same thing.
+
+    Five different first moves do lead to 24, so the search can find one - it
+    just has to get past everything that looks better first. That is the whole
+    argument for backpropagation in a single puzzle: the attractive branches
+    have to be expanded, come back with reward 0, and be marked down before
+    the exploration term will carry selection anywhere near the answer.
+
+    Deliberately *not* one of the famous hard puzzles - 3-3-8-8, 1-3-4-6,
+    1-5-5-5 - because a capable model has those memorised and answers from
+    recall instead of searching, which teaches nothing.
+    """
+
+    id = "game_of_24_hard"
+    title = "Game of 24, the hard one"
+
+    #: Twelve dead ends ahead of the first move that works, and five routes in.
+    #: Hard enough that a good model has to search, findable enough that it can.
+    NUMBERS = [6, 9, 9, 10]
+
+    def defaults(self) -> dict[str, Any]:
+        # A bigger budget than the easy puzzle: the branch that works has to
+        # survive several rounds of looking worse than its siblings before the
+        # exploration bonus reaches it.
+        return {**super().defaults(), "iterations": 16}

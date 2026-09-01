@@ -12,7 +12,7 @@ the algorithm the trace is a recording of.
 | | what it is | time on task |
 |---|---|---|
 | **the web app** (repository root) | a viewer that steps through a trace: the tree grows as the search grew, and a panel shows the arithmetic behind each operation | ~10 min, click |
-| **`scripts/run_lats.py`** | a from-scratch LATS implementation searching three real environments | ~45 min, read and modify |
+| **`scripts/run_lats.py`** | a from-scratch LATS implementation searching four real environments, offline or against a real model | ~45 min, read and modify |
 | **`scripts/create_video.py`** | a 16½-minute Manim explainer in seven parts, rendered from source, with a narration script generated to match it | ~16 min, watch |
 
 > **The default path runs offline with no API key.** The default policy is a
@@ -42,7 +42,7 @@ pip install -r requirements.txt   # only the video needs these
 python scripts/run_lats.py        # a search run, into results/lats_traces/
 ```
 
-The viewer opens on the six traces committed in `public/traces/`, so it has
+The viewer opens on the traces committed in `public/traces/`, so it has
 something to show before you have run anything. The default `--llm mock` policy
 imports nothing beyond the standard library, so a search runs before you install
 anything; `requirements.txt` is what the video and the real-model backends
@@ -64,7 +64,7 @@ on `PATH`. `python scripts/create_video.py --check` reports what it can find.
 │   ├── types.ts              the lats-trace/1 schema in TypeScript
 │   ├── lib/                  validation, tidy tree layout, formatting
 │   └── components/           tree, timeline, operation panels, node detail
-├── public/traces/            the six traces the viewer ships with
+├── public/traces/            the traces the viewer ships with
 ├── scripts/
 │   ├── run_lats.py           CLI: run a search, write a trace
 │   ├── run_lats/             the implementation
@@ -72,7 +72,8 @@ on `PATH`. `python scripts/create_video.py --check` reports what it can find.
 │   │   ├── search.py         the six operations
 │   │   ├── llm.py            the two policies: offline mock, and OpenAI
 │   │   ├── trace.py          the trace format and its writer
-│   │   └── tasks/            the three environments, and a subprocess runner
+│   │   ├── env.py            reads .env, so a key need not be exported
+│   │   └── tasks/            the four environments, and a subprocess runner
 │   ├── create_video.py       CLI: render the video, write SCRIPT.txt
 │   └── create_video/         Manim source
 │       ├── paths.py          where a render reads and writes
@@ -108,6 +109,20 @@ Each run writes into its own timestamped directory under
 `results/lats_traces/`, alongside a `manifest.json` indexing what it produced.
 Drop any of those files onto the viewer window to step through it.
 
+**Every trace is named for the policy that produced it** — `mock_game_of_24`,
+`openai_game_of_24_hard` — and the prefix comes from `--llm` rather than from
+anything you type, so a trace cannot be mislabelled. Which policy wrote a trace
+is the first thing you want to know about it and the easiest thing to lose
+track of once a few are sitting in a folder.
+
+`--publish` regenerates the offline set in `public/traces/` and leaves anything
+else there alone, so a published OpenAI trace survives it. To add one:
+
+```bash
+python scripts/run_lats.py --task game_of_24_hard --llm openai --publish \
+    --note "what this trace is for; the picker shows it under the name"
+```
+
 | flag | meaning | paper's value |
 |---|---|---|
 | `--n` | samples per expansion | 5 |
@@ -123,7 +138,7 @@ Drop any of those files onto the viewer window to step through it.
 Task defaults are applied first and command-line flags override them, so
 `--task merge_intervals` picks up λ = 0.8 and no simulation without being told.
 
-### The three environments
+### The four environments
 
 **`merge_intervals`** — write `merge(intervals)` against five visible tests.
 Reward is the fraction that pass, measured by running them in a child process.
@@ -139,6 +154,20 @@ The policy scores a move by how *tidy* the result looks, which is a plausible
 heuristic and frequently wrong. That gap is what backpropagation exists to
 close.
 
+**`game_of_24_hard`** — the same environment on 6, 9, 9, 10, chosen by sweeping
+every four-number puzzle for the one that punishes a value function hardest.
+Every solution ends `9 + 15`, and the only ways to reach 15 are a fraction or
+`9 * 10 = 90` — a number far past the target. The heuristic's **twelve
+best-looking first moves are all dead ends**, and the trap is sharpest at rank
+five: `6 + 9 = 15` makes exactly the number every solution needs and still
+loses, because it spends the 9 the last step requires. Five first moves do
+work, so the search can find one; it has to get through everything that looks
+better first.
+
+Deliberately not one of the famous hard puzzles (3-3-8-8, 1-3-4-6, 1-5-5-5) —
+a capable model has those memorised and answers from recall instead of
+searching, which teaches nothing.
+
 **`multihop_qa`** — a ReAct-shaped loop (`search[term]`, `finish[answer]`) over
 a small corpus. The question asks which venue published the paper that
 *introduced* the algorithm LATS adapts; the corpus also holds a 2006 paper about
@@ -147,31 +176,80 @@ has a recency bias that walks straight into it.
 
 ### The traces the viewer ships with
 
+Every trace is named for the policy that wrote it. The offline set is
+reproducible and needs no key — `python scripts/run_lats.py --publish`
+regenerates it byte for byte:
+
 | trace | solved | nodes | steps | what it is for |
 |---|---|---|---|---|
-| `merge_intervals` | yes | 5 | 13 | the programming setting, simulation skipped |
-| `game_of_24` | yes | 45 | 31 | all six operations, including a real rollout |
-| `game_of_24_no_value` | yes | 68 | 74 | ablation: λ = 0, self-consistency only |
-| `game_of_24_greedy` | **no** | 64 | 74 | ablation: w = 0, exploitation only |
-| `multihop_qa` | yes | 14 | 13 | two-hop retrieval with a distractor |
-| `multihop_qa_no_reflection` | yes | 14 | 12 | ablation: reflection off |
+| `mock_merge_intervals` | yes | 5 | 13 | the programming setting, simulation skipped |
+| `mock_game_of_24` | yes | 45 | 31 | all six operations, including a real rollout |
+| `mock_game_of_24_no_value` | yes | 68 | 74 | ablation: λ = 0, self-consistency only |
+| `mock_game_of_24_greedy` | **no** | 64 | 74 | ablation: w = 0, exploitation only |
+| `mock_game_of_24_hard` | **no** | 75 | 98 | the hard puzzle, and why more search does not help |
+| `mock_multihop_qa` | yes | 14 | 13 | two-hop retrieval with a distractor |
+| `mock_multihop_qa_no_reflection` | yes | 14 | 12 | ablation: reflection off |
 
-Two things worth saying to a class. Reflection changes the outcome least, which
-matches the paper's own ablation. And the ordering of the other two is
-*reversed* from the paper's HotPotQA result: on this puzzle the search structure
-matters most and the value function second. Which term dominates is a property
-of the task, not a law.
+The rest came out of a real model. They are **not** reproducible — a rerun
+gives a different tree — which is exactly why they are checked in rather than
+regenerated:
+
+| trace | model | solved | nodes | steps | what it is for |
+|---|---|---|---|---|---|
+| `openai_game_of_24` | gpt-5 | yes | 16 | 7 | the short one: a strong policy needs no search at all |
+| `openai_multihop_qa` | gpt-5 | yes | 13 | 13 | the whole loop in thirteen steps: wrong commit, reflection, recovery |
+| `openai_game_of_24_hard` | gpt-5 | **no** | 110 | 98 | the long one: sixteen iterations of correct search over a tree that cannot contain the answer |
+| `openai_game_of_24_hard_wide` | gpt-5 | yes | 151 | 49 | the same, with `--n 12`: one winning move gets proposed, and the search finds it |
+
+Three things worth saying to a class.
+
+**Reflection matters least.** Turning it off changes nothing on `multihop_qa`,
+which matches the paper's own ablation, where reflection is the smallest of its
+three (−0.05 exact match against −0.26 for the value function and −0.21 for the
+search).
+
+**Which term dominates is a property of the task, not a law.** On Game of 24 the
+ordering is *reversed* from the paper's HotPotQA result: removing exploration
+(`w = 0`) breaks the search outright while removing the model's self-evaluation
+(`λ = 0`) only makes it slower.
+
+**Search cannot repair the policy — but sample width can.** Read the three
+`game_of_24_hard` traces in order. `mock_game_of_24_hard` and
+`openai_game_of_24_hard` are the same puzzle, and a naive arithmetic heuristic
+and a frontier reasoning model fail it the same way: both expand the root into
+five tidy-looking moves, and neither set contains any of the five moves that can
+reach 24. Selection, backpropagation and reflection then run flawlessly for
+sixteen iterations over a tree with no solution in it.
+
+`openai_game_of_24_hard_wide` moves exactly one knob — `--n 12` instead of 5 —
+and `9 * 10 = 90` finally appears among the root's children. It is the *least*
+attractive of the twelve, and it sits at the bottom of the exploitation column
+for seven iterations while the search works through `6*9`, `9/9`, `6+10`,
+`10-9`, `10-6` and `6+9`, each returning 0 and each marked down. On iteration
+eight the exploration bonus reaches 1.44, the largest term on the board, and
+carries selection into the branch nothing liked. Reward 1.
+
+Same model, same puzzle, same search: what changed was how much the policy was
+asked to propose. That is the clearest thing in this repository, and it is worth
+a whole class on its own.
 
 ### The real-model policy
 
-The OpenAI SDK is in `requirements.txt`, so the only thing to supply is a key:
+The OpenAI SDK is in `requirements.txt`, so the only thing to supply is a key.
+Put it in a `.env` file at the repository root — gitignored, and read
+automatically — or export it:
 
 ```bash
-export OPENAI_API_KEY=sk-...            # macOS / Linux
-$env:OPENAI_API_KEY = 'sk-...'          # PowerShell
+cp .env.example .env                    # then fill in OPENAI_API_KEY
 
-python scripts/run_lats.py --task game_of_24 --llm openai
+export OPENAI_API_KEY=sk-...            # or macOS / Linux
+$env:OPENAI_API_KEY = 'sk-...'          # or PowerShell
+
+python scripts/run_lats.py --task game_of_24_hard --llm openai
 ```
+
+Anything already exported wins over `.env`, and only the variable *names* are
+ever printed.
 
 One request per expansion returns all `n` candidates, which keeps a full search
 down to a handful of calls. `--model` overrides the default of `gpt-5`;

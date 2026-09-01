@@ -1,6 +1,6 @@
 {
   "schema": "lats-trace/1",
-  "name": "merge_intervals",
+  "name": "mock_merge_intervals",
   "generated_by": {
     "package": "run_lats",
     "version": "1.0.0"

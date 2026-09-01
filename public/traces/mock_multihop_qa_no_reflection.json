@@ -1,6 +1,6 @@
 {
   "schema": "lats-trace/1",
-  "name": "multihop_qa",
+  "name": "mock_multihop_qa_no_reflection",
   "generated_by": {
     "package": "run_lats",
     "version": "1.0.0"
@@ -10,7 +10,7 @@
     "family": "qa",
     "title": "Two-hop question answering with a retrieval tool",
     "prompt": "LATS adapts an existing tree search algorithm. At which venue, and in which year, was the paper that introduced that algorithm presented?",
-    "reward": "1 for an exact match against the gold answer, else 0 (an oracle signal)",
+    "reward": "1 if the answer names the gold venue and year, else 0 (an oracle signal)",
     "context": {
       "Tools": [
         "search[term]",
@@ -35,7 +35,7 @@
     "iterations": 8,
     "max_depth": 4,
     "simulate": true,
-    "reflect": true,
+    "reflect": false,
     "reflect_threshold": 1.0,
     "solved_at": 1.0,
     "seed": 7
@@ -46,7 +46,7 @@
     "model": null,
     "seed": 7,
     "calls": 5,
-    "tokens": 1113,
+    "tokens": 1069,
     "tokens_are_estimated": true
   },
   "result": {
@@ -61,9 +61,7 @@
     "nodes": 14,
     "iterations_run": 2,
     "stopped_because": "a trajectory reached the target reward",
-    "reflections": [
-      "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer."
-    ]
+    "reflections": []
   },
   "nodes": [
     {
@@ -231,7 +229,7 @@
         "document": "Reflexion"
       },
       "terminal": false,
-      "created_at": 8
+      "created_at": 7
     },
     {
       "id": 12,
@@ -239,14 +237,14 @@
       "depth": 2,
       "label": "finish[Computers and Games 2006]",
       "action": "finish[Computers and Games 2006]",
-      "observation": "Answered 'Computers and Games 2006'. Exact match.",
+      "observation": "Answered 'Computers and Games 2006'. That is the gold answer.",
       "detail": {
         "answer": "Computers and Games 2006",
         "gold": "Computers and Games 2006",
         "exact_match": true
       },
       "terminal": true,
-      "created_at": 8
+      "created_at": 7
     },
     {
       "id": 13,
@@ -260,7 +258,7 @@
         "document": "Monte Carlo Tree Search"
       },
       "terminal": false,
-      "created_at": 8
+      "created_at": 7
     }
   ],
   "steps": [
@@ -269,14 +267,14 @@
       "op": "init",
       "iteration": 0,
       "title": "Root",
-      "summary": "Two-hop question answering with a retrieval tool. The search starts from an empty state; reward is 1 for an exact match against the gold answer, else 0 (an oracle signal).",
+      "summary": "Two-hop question answering with a retrieval tool. The search starts from an empty state; reward is 1 if the answer names the gold venue and year, else 0 (an oracle signal).",
       "detail": {
         "task": {
           "id": "multihop_qa",
           "family": "qa",
           "title": "Two-hop question answering with a retrieval tool",
           "prompt": "LATS adapts an existing tree search algorithm. At which venue, and in which year, was the paper that introduced that algorithm presented?",
-          "reward": "1 for an exact match against the gold answer, else 0 (an oracle signal)",
+          "reward": "1 if the answer names the gold venue and year, else 0 (an oracle signal)",
           "context": {
             "Tools": [
               "search[term]",
@@ -301,7 +299,7 @@
           "iterations": 8,
           "max_depth": 4,
           "simulate": true,
-          "reflect": true,
+          "reflect": false,
           "reflect_threshold": 1.0,
           "solved_at": 1.0,
           "seed": 7
@@ -869,138 +867,6 @@
     },
     {
       "index": 6,
-      "op": "reflection",
-      "iteration": 1,
-      "title": "Reflection",
-      "summary": "The trajectory failed, so the agent writes down why. The note joins the context for every later expansion.",
-      "detail": {
-        "node": 10,
-        "text": "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer.",
-        "trajectory": [
-          0,
-          1,
-          4,
-          7,
-          10
-        ],
-        "reward": 0.0,
-        "total_notes": 1
-      },
-      "focus": [
-        10
-      ],
-      "path": [
-        0,
-        1,
-        4,
-        7,
-        10
-      ],
-      "tokens": 871,
-      "state": {
-        "0": {
-          "visits": 2,
-          "value": 0.0,
-          "reward": null,
-          "lm": null,
-          "sc": null,
-          "terminal": false,
-          "reflected": false
-        },
-        "1": {
-          "visits": 2,
-          "value": 0.1833,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "2": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "3": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "4": {
-          "visits": 2,
-          "value": 0.2458,
-          "reward": null,
-          "lm": 0.65,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "5": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "6": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "7": {
-          "visits": 2,
-          "value": 0.2667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.6667,
-          "terminal": false,
-          "reflected": false
-        },
-        "8": {
-          "visits": 1,
-          "value": 0.4942,
-          "reward": 0.0,
-          "lm": 0.655,
-          "sc": 0.3333,
-          "terminal": true,
-          "reflected": false
-        },
-        "9": {
-          "visits": 1,
-          "value": 0.4942,
-          "reward": 0.0,
-          "lm": 0.655,
-          "sc": 0.3333,
-          "terminal": true,
-          "reflected": false
-        },
-        "10": {
-          "visits": 2,
-          "value": 0.2542,
-          "reward": 0.0,
-          "lm": 0.35,
-          "sc": 0.6667,
-          "terminal": true,
-          "reflected": true
-        }
-      }
-    },
-    {
-      "index": 7,
       "op": "selection",
       "iteration": 2,
       "title": "Selection",
@@ -1154,12 +1020,12 @@
           "lm": 0.35,
           "sc": 0.6667,
           "terminal": true,
-          "reflected": true
+          "reflected": false
         }
       }
     },
     {
-      "index": 8,
+      "index": 7,
       "op": "expansion",
       "iteration": 2,
       "title": "Expansion",
@@ -1188,7 +1054,7 @@
             "id": 12,
             "label": "finish[Computers and Games 2006]",
             "text": "finish[Computers and Games 2006]",
-            "observation": "Answered 'Computers and Games 2006'. Exact match.",
+            "observation": "Answered 'Computers and Games 2006'. That is the gold answer.",
             "detail": {
               "answer": "Computers and Games 2006",
               "gold": "Computers and Games 2006",
@@ -1221,9 +1087,7 @@
           }
         ],
         "n": 3,
-        "reflections_in_context": [
-          "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer."
-        ]
+        "reflections_in_context": []
       },
       "focus": [
         11,
@@ -1234,7 +1098,7 @@
         0,
         2
       ],
-      "tokens": 1113,
+      "tokens": 1069,
       "state": {
         "0": {
           "visits": 2,
@@ -1333,7 +1197,7 @@
           "lm": 0.35,
           "sc": 0.6667,
           "terminal": true,
-          "reflected": true
+          "reflected": false
         },
         "11": {
           "visits": 1,
@@ -1365,7 +1229,7 @@
       }
     },
     {
-      "index": 9,
+      "index": 8,
       "op": "evaluation",
       "iteration": 2,
       "title": "Evaluation",
@@ -1408,7 +1272,7 @@
         0,
         2
       ],
-      "tokens": 1113,
+      "tokens": 1069,
       "state": {
         "0": {
           "visits": 2,
@@ -1507,7 +1371,160 @@
           "lm": 0.35,
           "sc": 0.6667,
           "terminal": true,
-          "reflected": true
+          "reflected": false
+        },
+        "11": {
+          "visits": 1,
+          "value": 0.3667,
+          "reward": null,
+          "lm": 0.4,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        },
+        "12": {
+          "visits": 1,
+          "value": 0.5917,
+          "reward": 1.0,
+          "lm": 0.85,
+          "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "13": {
+          "visits": 1,
+          "value": 0.3417,
+          "reward": null,
+          "lm": 0.35,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        }
+      }
+    },
+    {
+      "index": 9,
+      "op": "simulation",
+      "iteration": 2,
+      "title": "Simulation not needed",
+      "summary": "Expansion already reached a solved terminal state at node 12; there is nothing to roll out.",
+      "detail": {
+        "rollout": [
+          12
+        ],
+        "terminal": 12,
+        "truncated": false,
+        "skipped": true,
+        "observation": "Answered 'Computers and Games 2006'. That is the gold answer."
+      },
+      "focus": [
+        12
+      ],
+      "path": [
+        0,
+        2,
+        12
+      ],
+      "tokens": 1069,
+      "state": {
+        "0": {
+          "visits": 2,
+          "value": 0.0,
+          "reward": null,
+          "lm": null,
+          "sc": null,
+          "terminal": false,
+          "reflected": false
+        },
+        "1": {
+          "visits": 2,
+          "value": 0.1833,
+          "reward": null,
+          "lm": 0.4,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        },
+        "2": {
+          "visits": 1,
+          "value": 0.3667,
+          "reward": null,
+          "lm": 0.4,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        },
+        "3": {
+          "visits": 1,
+          "value": 0.3667,
+          "reward": null,
+          "lm": 0.4,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        },
+        "4": {
+          "visits": 2,
+          "value": 0.2458,
+          "reward": null,
+          "lm": 0.65,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        },
+        "5": {
+          "visits": 1,
+          "value": 0.3667,
+          "reward": null,
+          "lm": 0.4,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        },
+        "6": {
+          "visits": 1,
+          "value": 0.3667,
+          "reward": null,
+          "lm": 0.4,
+          "sc": 0.3333,
+          "terminal": false,
+          "reflected": false
+        },
+        "7": {
+          "visits": 2,
+          "value": 0.2667,
+          "reward": null,
+          "lm": 0.4,
+          "sc": 0.6667,
+          "terminal": false,
+          "reflected": false
+        },
+        "8": {
+          "visits": 1,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
+          "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "9": {
+          "visits": 1,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
+          "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
+          "terminal": true,
+          "reflected": false
         },
         "11": {
           "visits": 1,
@@ -1540,159 +1557,6 @@
     },
     {
       "index": 10,
-      "op": "simulation",
-      "iteration": 2,
-      "title": "Simulation not needed",
-      "summary": "Expansion already reached a solved terminal state at node 12; there is nothing to roll out.",
-      "detail": {
-        "rollout": [
-          12
-        ],
-        "terminal": 12,
-        "truncated": false,
-        "skipped": true,
-        "observation": "Answered 'Computers and Games 2006'. Exact match."
-      },
-      "focus": [
-        12
-      ],
-      "path": [
-        0,
-        2,
-        12
-      ],
-      "tokens": 1113,
-      "state": {
-        "0": {
-          "visits": 2,
-          "value": 0.0,
-          "reward": null,
-          "lm": null,
-          "sc": null,
-          "terminal": false,
-          "reflected": false
-        },
-        "1": {
-          "visits": 2,
-          "value": 0.1833,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "2": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "3": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "4": {
-          "visits": 2,
-          "value": 0.2458,
-          "reward": null,
-          "lm": 0.65,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "5": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "6": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "7": {
-          "visits": 2,
-          "value": 0.2667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.6667,
-          "terminal": false,
-          "reflected": false
-        },
-        "8": {
-          "visits": 1,
-          "value": 0.4942,
-          "reward": 0.0,
-          "lm": 0.655,
-          "sc": 0.3333,
-          "terminal": true,
-          "reflected": false
-        },
-        "9": {
-          "visits": 1,
-          "value": 0.4942,
-          "reward": 0.0,
-          "lm": 0.655,
-          "sc": 0.3333,
-          "terminal": true,
-          "reflected": false
-        },
-        "10": {
-          "visits": 2,
-          "value": 0.2542,
-          "reward": 0.0,
-          "lm": 0.35,
-          "sc": 0.6667,
-          "terminal": true,
-          "reflected": true
-        },
-        "11": {
-          "visits": 1,
-          "value": 0.3667,
-          "reward": null,
-          "lm": 0.4,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
-        "12": {
-          "visits": 1,
-          "value": 0.5917,
-          "reward": 1.0,
-          "lm": 0.85,
-          "sc": 0.3333,
-          "terminal": true,
-          "reflected": false
-        },
-        "13": {
-          "visits": 1,
-          "value": 0.3417,
-          "reward": null,
-          "lm": 0.35,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        }
-      }
-    },
-    {
-      "index": 11,
       "op": "backpropagation",
       "iteration": 2,
       "title": "Backpropagation",
@@ -1746,7 +1610,7 @@
         2,
         12
       ],
-      "tokens": 1113,
+      "tokens": 1069,
       "state": {
         "0": {
           "visits": 3,
@@ -1845,7 +1709,7 @@
           "lm": 0.35,
           "sc": 0.6667,
           "terminal": true,
-          "reflected": true
+          "reflected": false
         },
         "11": {
           "visits": 1,
@@ -1877,7 +1741,7 @@
       }
     },
     {
-      "index": 12,
+      "index": 11,
       "op": "result",
       "iteration": 2,
       "title": "Search over",
@@ -1894,9 +1758,7 @@
         "nodes": 14,
         "iterations_run": 2,
         "stopped_because": "a trajectory reached the target reward",
-        "reflections": [
-          "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer."
-        ]
+        "reflections": []
       },
       "focus": [
         0,
@@ -1908,7 +1770,7 @@
         2,
         12
       ],
-      "tokens": 1113,
+      "tokens": 1069,
       "state": {
         "0": {
           "visits": 3,
@@ -2007,7 +1869,7 @@
           "lm": 0.35,
           "sc": 0.6667,
           "terminal": true,
-          "reflected": true
+          "reflected": false
         },
         "11": {
           "visits": 1,

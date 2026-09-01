@@ -2,8 +2,8 @@
 Multi-hop question answering over a small offline corpus.
 
 A ReAct-shaped environment: the agent issues ``search[term]``, reads what comes
-back, and eventually commits with ``finish[answer]``. The reward is exact match
-against a gold answer.
+back, and eventually commits with ``finish[answer]``. The reward is a match
+against a gold answer - see :func:`matches_gold` for how loose that is.
 
 Two things about this task are worth saying out loud in class.
 
@@ -126,6 +126,30 @@ def normalise(text: str) -> str:
     return " ".join(w for w in words if w not in {"a", "an", "the"})
 
 
+#: Words that carry no venue information, so an answer is not marked wrong for
+#: spelling them differently.
+_FILLER = {"and", "of", "at", "in", "on", "for", "the", "a", "an"}
+
+
+def matches_gold(answer: str) -> bool:
+    """Is this the gold answer, allowing for how a model chooses to write it?
+
+    Strict string equality is the benchmark convention, and it fails a correct
+    answer over a comma: "Computers and Games (CG), 2006" and "Computers and
+    Games 2006" name the same venue and year. Requiring every content word of
+    the gold answer to appear accepts the extra qualifier while still rejecting
+    a different venue - "ECML/PKDD 2006" contains neither "computers" nor
+    "games", and an answer that drops the year is missing "2006".
+
+    It is still an oracle, and it can still be fooled by an answer that negates
+    itself. It is a teaching environment, not a benchmark harness.
+    """
+    def content(text: str) -> set[str]:
+        return {w for w in normalise(text).split() if w not in _FILLER}
+
+    return content(GOLD) <= content(answer)
+
+
 def retrieve(query: str) -> dict[str, str] | None:
     """Return the single best-matching document, or None.
 
@@ -152,7 +176,7 @@ class MultiHopQATask(Task):
     family = "qa"
     title = "Two-hop question answering with a retrieval tool"
     prompt = QUESTION
-    reward_desc = "1 for an exact match against the gold answer, else 0 (an oracle signal)"
+    reward_desc = "1 if the answer names the gold venue and year, else 0 (an oracle signal)"
 
     TEMPERATURE = 0.28
 
@@ -175,14 +199,15 @@ class MultiHopQATask(Task):
 
         if kind == "finish":
             answer = action.payload["answer"]
-            correct = normalise(answer) == normalise(GOLD)
+            correct = matches_gold(answer)
             new = dict(data)
             new["trail"] = list(data["trail"]) + [f"finish[{answer}]"]
             new["answer"] = answer
             return new, Observation(
                 text=(
                     f"Answered {answer!r}. "
-                    + ("Exact match." if correct else f"The gold answer is {GOLD!r}.")
+                    + ("That is the gold answer."
+                       if correct else f"The gold answer is {GOLD!r}.")
                 ),
                 detail={"answer": answer, "gold": GOLD, "exact_match": correct},
                 terminal=True,

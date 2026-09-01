@@ -1,6 +1,6 @@
 {
   "schema": "lats-trace/1",
-  "name": "game_of_24",
+  "name": "mock_game_of_24",
   "generated_by": {
     "package": "run_lats",
     "version": "1.0.0"
@@ -38,7 +38,7 @@
     "model": null,
     "seed": 7,
     "calls": 11,
-    "tokens": 1662,
+    "tokens": 2300,
     "tokens_are_estimated": true
   },
   "result": {
@@ -1177,7 +1177,7 @@
       "path": [
         0
       ],
-      "tokens": 105,
+      "tokens": 163,
       "state": {
         "0": {
           "visits": 1,
@@ -1296,7 +1296,7 @@
       "path": [
         0
       ],
-      "tokens": 105,
+      "tokens": 163,
       "state": {
         "0": {
           "visits": 1,
@@ -1380,7 +1380,7 @@
         7,
         10
       ],
-      "tokens": 304,
+      "tokens": 478,
       "state": {
         "0": {
           "visits": 1,
@@ -1569,7 +1569,7 @@
         7,
         10
       ],
-      "tokens": 304,
+      "tokens": 478,
       "state": {
         "0": {
           "visits": 2,
@@ -1717,7 +1717,7 @@
         7,
         10
       ],
-      "tokens": 304,
+      "tokens": 478,
       "state": {
         "0": {
           "visits": 2,
@@ -1914,7 +1914,7 @@
         0,
         2
       ],
-      "tokens": 304,
+      "tokens": 478,
       "state": {
         "0": {
           "visits": 2,
@@ -2176,7 +2176,7 @@
         0,
         2
       ],
-      "tokens": 432,
+      "tokens": 664,
       "state": {
         "0": {
           "visits": 2,
@@ -2404,7 +2404,7 @@
         0,
         2
       ],
-      "tokens": 432,
+      "tokens": 664,
       "state": {
         "0": {
           "visits": 2,
@@ -2594,7 +2594,7 @@
         2,
         19
       ],
-      "tokens": 559,
+      "tokens": 849,
       "state": {
         "0": {
           "visits": 2,
@@ -2864,7 +2864,7 @@
         13,
         19
       ],
-      "tokens": 559,
+      "tokens": 849,
       "state": {
         "0": {
           "visits": 3,
@@ -3093,7 +3093,7 @@
         13,
         19
       ],
-      "tokens": 559,
+      "tokens": 849,
       "state": {
         "0": {
           "visits": 3,
@@ -3371,7 +3371,7 @@
         0,
         5
       ],
-      "tokens": 559,
+      "tokens": 849,
       "state": {
         "0": {
           "visits": 3,
@@ -3691,7 +3691,7 @@
         0,
         5
       ],
-      "tokens": 715,
+      "tokens": 1063,
       "state": {
         "0": {
           "visits": 3,
@@ -3982,7 +3982,7 @@
         0,
         5
       ],
-      "tokens": 715,
+      "tokens": 1063,
       "state": {
         "0": {
           "visits": 3,
@@ -4244,7 +4244,7 @@
         5,
         26
       ],
-      "tokens": 867,
+      "tokens": 1273,
       "state": {
         "0": {
           "visits": 3,
@@ -4568,7 +4568,7 @@
         22,
         26
       ],
-      "tokens": 867,
+      "tokens": 1273,
       "state": {
         "0": {
           "visits": 4,
@@ -4851,7 +4851,7 @@
         22,
         26
       ],
-      "tokens": 867,
+      "tokens": 1273,
       "state": {
         "0": {
           "visits": 4,
@@ -5183,7 +5183,7 @@
         0,
         3
       ],
-      "tokens": 867,
+      "tokens": 1273,
       "state": {
         "0": {
           "visits": 4,
@@ -5582,7 +5582,7 @@
         0,
         3
       ],
-      "tokens": 1050,
+      "tokens": 1514,
       "state": {
         "0": {
           "visits": 4,
@@ -5945,7 +5945,7 @@
         0,
         3
       ],
-      "tokens": 1050,
+      "tokens": 1514,
       "state": {
         "0": {
           "visits": 4,
@@ -6270,7 +6270,7 @@
         3,
         35
       ],
-      "tokens": 1233,
+      "tokens": 1755,
       "state": {
         "0": {
           "visits": 4,
@@ -6666,7 +6666,7 @@
         28,
         35
       ],
-      "tokens": 1233,
+      "tokens": 1755,
       "state": {
         "0": {
           "visits": 5,
@@ -7021,7 +7021,7 @@
         28,
         35
       ],
-      "tokens": 1233,
+      "tokens": 1755,
       "state": {
         "0": {
           "visits": 5,
@@ -7425,7 +7425,7 @@
         0,
         1
       ],
-      "tokens": 1233,
+      "tokens": 1755,
       "state": {
         "0": {
           "visits": 5,
@@ -7897,7 +7897,7 @@
         0,
         1
       ],
-      "tokens": 1448,
+      "tokens": 2028,
       "state": {
         "0": {
           "visits": 5,
@@ -8332,7 +8332,7 @@
         0,
         1
       ],
-      "tokens": 1448,
+      "tokens": 2028,
       "state": {
         "0": {
           "visits": 5,
@@ -8729,7 +8729,7 @@
         1,
         43
       ],
-      "tokens": 1662,
+      "tokens": 2300,
       "state": {
         "0": {
           "visits": 5,
@@ -9206,7 +9206,7 @@
         40,
         43
       ],
-      "tokens": 1662,
+      "tokens": 2300,
       "state": {
         "0": {
           "visits": 6,
@@ -9653,7 +9653,7 @@
         40,
         43
       ],
-      "tokens": 1662,
+      "tokens": 2300,
       "state": {
         "0": {
           "visits": 6,

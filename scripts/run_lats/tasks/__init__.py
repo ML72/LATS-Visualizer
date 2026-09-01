@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from .base import Task
 from .code_task import MergeIntervalsTask
-from .game24 import Game24Task
+from .game24 import Game24HardTask, Game24Task
 from .qa import MultiHopQATask
 
 #: Everything ``scripts/run_lats.py`` can run, keyed by the name used on the command
@@ -17,7 +17,9 @@ from .qa import MultiHopQATask
 TASKS: dict[str, type[Task]] = {
     MergeIntervalsTask.id: MergeIntervalsTask,
     Game24Task.id: Game24Task,
+    Game24HardTask.id: Game24HardTask,
     MultiHopQATask.id: MultiHopQATask,
 }
 
-__all__ = ["TASKS", "Task", "MergeIntervalsTask", "Game24Task", "MultiHopQATask"]
+__all__ = ["TASKS", "Task", "MergeIntervalsTask", "Game24Task",
+           "Game24HardTask", "MultiHopQATask"]
