@@ -363,7 +363,8 @@ class MergeIntervalsTask(Task):
             "candidate must be a whole program, not a patch."
         )
 
-    def parse_action(self, obj: dict) -> Action:
+    def parse_action(self, obj: dict, data: dict) -> Action:
+        # ``data`` is unused: a candidate program is self-contained.
         label = str(obj.get("label", "candidate"))[:32]
         return Action(
             label=label,

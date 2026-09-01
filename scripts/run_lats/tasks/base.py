@@ -11,7 +11,7 @@ Two of the methods exist for the two policies:
                    task defines, so the demo runs with no API key and produces
                    the same trace every time.
 ``render`` / ``parse_action``
-                   the Claude-backed policy needs the state as text and needs
+                   the OpenAI-backed policy needs the state as text, and needs
                    to turn a JSON reply back into an :class:`Action`.
 """
 
@@ -74,8 +74,16 @@ class Task:
         """One paragraph telling a real model what JSON to return."""
         raise NotImplementedError
 
-    def parse_action(self, obj: dict) -> Action:
-        """Turn one JSON object from a real model into an :class:`Action`."""
+    def parse_action(self, obj: dict, data: dict) -> Action:
+        """Turn one JSON object from a real model into an :class:`Action`.
+
+        ``data`` is the state the action would be applied to. Most tasks do not
+        need it - a program or a tool call means the same thing wherever it
+        appears - but a task whose actions only make sense against the current
+        state does, and it is also the only chance to reject a move the model
+        invented. Raise :class:`ValueError` to drop the candidate; the search
+        treats an expansion that yields nothing as a dead end.
+        """
         raise NotImplementedError
 
     # -- reflection ---------------------------------------------------------

@@ -15,8 +15,9 @@ the algorithm the trace is a recording of.
 | **`scripts/run_lats.py`** | a from-scratch LATS implementation searching three real environments | ~45 min, read and modify |
 | **`scripts/create_video.py`** | a 16½-minute Manim explainer in seven parts, rendered from source, with a narration script generated to match it | ~16 min, watch |
 
-> **Everything runs offline with no API key.** The default policy is a seeded
-> stand-in, so the same command always writes the same trace, byte for byte.
+> **The default path runs offline with no API key.** The default policy is a
+> seeded stand-in, so the same command always writes the same trace, byte for
+> byte. `--llm openai` swaps in a real model when you want one.
 > What is *not* mocked is the environment: the candidate programs are executed,
 > the arithmetic is evaluated, the documents are retrieved. Every reward in
 > every bundled trace came out of a real execution.
@@ -42,8 +43,10 @@ python scripts/run_lats.py        # a search run, into results/lats_traces/
 ```
 
 The viewer opens on the six traces committed in `public/traces/`, so it has
-something to show before you have run anything. `scripts/run_lats.py` uses the
-standard library alone — the `pip install` is for the video.
+something to show before you have run anything. The default `--llm mock` policy
+imports nothing beyond the standard library, so a search runs before you install
+anything; `requirements.txt` is what the video and the real-model backends
+need.
 
 Rendering the video additionally needs **ffmpeg** and a **LaTeX** distribution
 on `PATH`. `python scripts/create_video.py --check` reports what it can find.
@@ -67,7 +70,7 @@ on `PATH`. `python scripts/create_video.py --check` reports what it can find.
 │   ├── run_lats/             the implementation
 │   │   ├── types.py          actions, observations, nodes, config
 │   │   ├── search.py         the six operations
-│   │   ├── llm.py            the two policies: offline mock, and real Claude
+│   │   ├── llm.py            the two policies: offline mock, and OpenAI
 │   │   ├── trace.py          the trace format and its writer
 │   │   └── tasks/            the three environments, and a subprocess runner
 │   ├── create_video.py       CLI: render the video, write SCRIPT.txt
@@ -115,7 +118,7 @@ Drop any of those files onto the viewer window to step through it.
 | `--seed` | seed for the offline policy | — |
 | `--no-simulate` | skip simulation | the paper does this for programming |
 | `--no-reflect` | skip reflection | ablation |
-| `--llm` | `mock` (default) or `claude` | — |
+| `--llm` | `mock` (default) or `openai` | — |
 
 Task defaults are applied first and command-line flags override them, so
 `--task merge_intervals` picks up λ = 0.8 and no simulation without being told.
@@ -161,28 +164,42 @@ of the task, not a law.
 
 ### The real-model policy
 
+The OpenAI SDK is in `requirements.txt`, so the only thing to supply is a key:
+
 ```bash
-pip install anthropic
-python scripts/run_lats.py --task game_of_24 --llm claude
+export OPENAI_API_KEY=sk-...            # macOS / Linux
+$env:OPENAI_API_KEY = 'sk-...'          # PowerShell
+
+python scripts/run_lats.py --task game_of_24 --llm openai
 ```
 
-One request per expansion returns all `n` candidates, so a full search is a
-handful of calls. Credentials resolve the usual way; `--model` picks a
-different model, and the default is `claude-opus-5`.
+One request per expansion returns all `n` candidates, which keeps a full search
+down to a handful of calls. `--model` overrides the default of `gpt-5`;
+`reasoning_effort` is sent only while the endpoint accepts it, so naming a
+non-reasoning model works without any extra flag. `OPENAI_BASE_URL` points the
+client at a compatible endpoint instead — a local server or a gateway — in which
+case the key may not be needed at all.
+
+The environment keeps the last word. On `game_of_24` a step the model invented,
+one using a number that is not on the board, is rejected before it reaches the
+tree, and the result is recomputed rather than taken from the reply: `2 * 11 =
+21` is accepted as the move and still lands on 22.
 
 > **Two warnings.** Traces produced this way are not reproducible. And on
 > `merge_intervals` the environment executes whatever program the model wrote.
 > That runs in a separate process with a timeout, which bounds a runaway loop —
 > it is **not** a sandbox and does not contain hostile code. The offline policy
 > only ever proposes programs written in `code_task.py`, so this applies to
-> `--llm claude` alone.
+> `--llm openai` alone.
 
 ### Adding your own task
 
 Subclass `run_lats.tasks.base.Task`, implement `root_data`, `step` and
 `mock_propose`, and register it in `scripts/run_lats/tasks/__init__.py`. The
 search loop, the trace writer and the viewer are all task-agnostic — nothing
-else changes.
+else changes. `render`, `action_schema` and `parse_action` are needed only for
+`--llm openai`; `parse_action` receives the state the action applies to, so it
+can reject one the model invented.
 
 ---
 

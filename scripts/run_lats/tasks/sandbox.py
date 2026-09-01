@@ -9,7 +9,7 @@ timeout, so an infinite loop costs a few seconds and a crash costs nothing.
 This is a teaching demo, not a sandbox. A subprocess bounds runtime and keeps
 the search process's own namespace clean; it does not contain hostile code. The
 mock policy only ever proposes code written in ``code_task.py``, but the
-``--llm claude`` path will happily run whatever the model wrote - see the
+``--llm openai`` path will happily run whatever the model wrote - see the
 warning in the README before pointing that at anything untrusted.
 """
 

@@ -300,7 +300,8 @@ class MultiHopQATask(Task):
             "finish; the answer must name a venue and a year."
         )
 
-    def parse_action(self, obj: dict) -> Action:
+    def parse_action(self, obj: dict, data: dict) -> Action:
+        # ``data`` is unused: a tool call means the same at any node.
         raw = str(obj["action"]).strip()
         match = re.match(r"(search|finish)\[(.*)\]\s*$", raw, re.IGNORECASE)
         if not match:

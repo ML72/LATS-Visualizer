@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 import random
+import re
 from fractions import Fraction
 from itertools import combinations
 from typing import Any
@@ -36,6 +37,23 @@ OPS: list[tuple[str, Any]] = [
 def _fmt(x: Fraction) -> str:
     """Render a Fraction the way a person would write it."""
     return str(x.numerator) if x.denominator == 1 else f"{x.numerator}/{x.denominator}"
+
+
+#: One arithmetic step, loosely spelled. Operands are integers or fractions;
+#: the operator may be written the way a model tends to write it.
+_STEP = re.compile(r"^\s*(-?\d+(?:/\d+)?)\s*([+\-*/])\s*(-?\d+(?:/\d+)?)\s*$")
+
+
+def _operands(text: str) -> tuple[Fraction, str, Fraction] | None:
+    """Split ``a op b`` into its parts, or ``None`` if it is not one."""
+    normalised = text.replace("×", "*").replace("x", "*").replace("÷", "/")
+    match = _STEP.match(normalised)
+    if not match:
+        return None
+    try:
+        return Fraction(match.group(1)), match.group(2), Fraction(match.group(3))
+    except (ValueError, ZeroDivisionError):
+        return None
 
 
 def legal_moves(numbers: list[Fraction]) -> list[dict]:
@@ -237,9 +255,43 @@ class Game24Task(Task):
             "numbers that are left."
         )
 
-    def parse_action(self, obj: dict) -> Action:
+    def parse_action(self, obj: dict, data: dict) -> Action:
+        """Match the model's step against the moves actually available.
+
+        A step only means something relative to the numbers that are left, so
+        the reply is resolved against :func:`legal_moves` for the current state
+        rather than taken at its word. Two things fall out of that. A move the
+        model invented - one using a number that is not there - raises here and
+        the candidate is dropped. And the *result* is the environment's, not the
+        model's: ``2 * 11 = 21`` is accepted as the move ``2 * 11`` and lands on
+        22, because the arithmetic was never the policy's to decide.
+        """
         expr = str(obj["expr"]).strip()
-        return Action(label=expr.split("=")[0].strip(), text=expr, payload={"raw": expr})
+        step = _operands(expr.split("=")[0])
+        if step is None:
+            raise ValueError(f"not an arithmetic step: {expr!r}")
+        x, symbol, y = step
+
+        for move in legal_moves(self._nums(data)):
+            candidate = _operands(move["label"])
+            if candidate is None or candidate[1] != symbol:
+                continue
+            # legal_moves emits + and * one way round only, so accept either
+            # spelling of those; - and / are already generated both ways.
+            if (candidate[0], candidate[2]) == (x, y) or (
+                symbol in "+*" and (candidate[2], candidate[0]) == (x, y)
+            ):
+                return Action(
+                    label=move["label"],
+                    text=move["expr"],
+                    payload={
+                        "expr": move["expr"],
+                        "remaining": [str(v) for v in move["remaining"]],
+                    },
+                )
+
+        left = ", ".join(_fmt(v) for v in self._nums(data))
+        raise ValueError(f"{expr!r} is not a legal step from {left}")
 
     # -- reflection ---------------------------------------------------------
 

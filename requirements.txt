@@ -5,14 +5,25 @@
 #   source .venv/bin/activate       # macOS / Linux
 #   pip install -r requirements.txt
 #
-# Only the video needs any of this. `python scripts/run_lats.py` uses the
-# standard library alone, and the trace viewer is a Node project - see
-# README.md. Manim additionally needs ffmpeg and a LaTeX distribution on PATH;
-# `python scripts/create_video.py --check` reports what it can find.
+# What needs what:
+#
+#   manim    the video. It additionally needs ffmpeg and a LaTeX distribution
+#            on PATH, neither of which pip can install;
+#            `python scripts/create_video.py --check` reports what it finds.
+#   openai   `python scripts/run_lats.py --llm openai`, which reads
+#            OPENAI_API_KEY from the environment.
+#
+# The default `--llm mock` policy imports neither, so a search still runs on
+# the standard library alone, offline and with no API key. The trace viewer is
+# a Node project and needs none of this - see README.md.
 
+# Direct dependencies.
 manim==0.21.0
+openai==3.6.0
 
-# Pinned transitive dependencies of manim, as resolved for this render.
+# Pinned transitive dependencies of manim, as resolved for this render. The
+# OpenAI SDK's own dependencies are left to its metadata instead: a trace made
+# with a real model is not reproducible anyway, so pinning them buys nothing.
 av==18.1.0
 beautifulsoup4==4.15.0
 click==8.4.2
@@ -45,4 +56,3 @@ svgelements==1.9.6
 tqdm==4.70.0
 typing_extensions==4.16.0
 watchdog==6.0.0
-

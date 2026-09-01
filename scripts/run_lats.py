@@ -20,8 +20,9 @@ Drop any of those onto the viewer to step through it. ``--publish`` writes into
 startup, so use it when you mean to change what ships.
 
 With the default ``--llm mock`` policy this needs no API key and no network,
-and the same seed always produces the same trace, byte for byte. ``--llm
-claude`` swaps in a real model; see the README before using it.
+and the same seed always produces the same trace, byte for byte. ``--llm openai``
+swaps in a real model, reading ``OPENAI_API_KEY`` from the environment; see the
+README before using it.
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from run_lats import LATS, Config, TASKS  # noqa: E402
-from run_lats.llm import build_policy  # noqa: E402
+from run_lats.llm import POLICIES, OpenAILLM, build_policy  # noqa: E402
 from run_lats.trace import TraceRecorder  # noqa: E402
 
 ROOT = SCRIPTS.parent
@@ -143,7 +144,7 @@ def run_one(
     name: str,
     out: Path,
     llm: str,
-    model: str,
+    model: str | None,
     quiet: bool = False,
 ) -> dict:
     """Search one task, write its trace, and return its manifest entry."""
@@ -269,11 +270,12 @@ def main(argv: list[str] | None = None) -> int:
                    help="skip the reflection step")
 
     m = p.add_argument_group("policy")
-    m.add_argument("--llm", default="mock", choices=["mock", "claude"],
+    m.add_argument("--llm", default="mock", choices=list(POLICIES),
                    help="mock is deterministic and offline (default); "
-                        "claude calls the API")
-    m.add_argument("--model", default="claude-opus-5",
-                   help="model id for --llm claude")
+                        "openai calls a real model")
+    m.add_argument("--model", default=None,
+                   help="model id for --llm openai "
+                        f"(default: {OpenAILLM.default_model})")
 
     p.add_argument("-q", "--quiet", action="store_true")
     args = p.parse_args(argv)

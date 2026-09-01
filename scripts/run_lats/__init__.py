@@ -21,7 +21,7 @@ The module layout:
 
 ``types``    the vocabulary - actions, observations, nodes, config
 ``tasks/``   the environments, which own the state and the reward
-``llm``      the policies: a deterministic offline mock, and a real Claude call
+``llm``      the policies: a deterministic offline mock, and a real OpenAI call
 ``search``   the six operations
 ``trace``    the replayable recording the browser demo reads
 """

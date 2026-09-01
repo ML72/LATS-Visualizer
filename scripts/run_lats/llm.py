@@ -1,15 +1,18 @@
 """
-The two policies: a deterministic offline stand-in, and a real Claude call.
+The two policies: a deterministic offline stand-in, and a real OpenAI call.
 
-The design rule for the whole submission is that everything must run with
-``pip install -r requirements.txt`` and **no API key**. So :class:`MockLLM` is
-the default everywhere, and it is honest about what it is: a seeded sampler
-over a bank of candidate actions that each task defines for itself.
+The design rule for the whole submission is that the default path must run with
+**no API key and no network**. So :class:`MockLLM` is the default everywhere,
+and it is honest about what it is: a seeded sampler over a bank of candidate
+actions that each task defines for itself.
 
 What is *not* mocked is the environment. The code really runs, the arithmetic
 really evaluates, the retrieval really searches. Every reward in every trace
 this package writes came out of a real execution - which is the part that
 matters, because the reward is what LATS backpropagates.
+
+:class:`OpenAILLM` swaps in a real model. It is selected with ``--llm openai``
+and is never used unless you ask for it.
 """
 
 from __future__ import annotations
@@ -77,6 +80,8 @@ def _estimate_tokens(
 
 
 # ---------------------------------------------------------------------------
+# The real model
+# ---------------------------------------------------------------------------
 
 
 SYSTEM = (
@@ -88,40 +93,118 @@ SYSTEM = (
 )
 
 
-class ClaudeLLM:
-    """The same policy interface, backed by a real model.
+class OpenAILLM:
+    """The same interface as :class:`MockLLM`, backed by a real model.
 
-    Opt-in: ``pip install anthropic`` and either export ``ANTHROPIC_API_KEY`` or
-    run ``ant auth login``. One request per expansion returns all ``n``
-    candidates, which keeps a full search down to a handful of calls.
+    Needs ``OPENAI_API_KEY``. ``OPENAI_BASE_URL`` points the SDK at a different
+    endpoint - a compatible local server, or a gateway - in which case the key
+    may not be needed at all.
+
+    One request per expansion returns all ``n`` candidates, which keeps a full
+    search down to a handful of calls. Reply parsing is deliberately lenient
+    rather than schema-enforced, so ``--model`` is free to name anything the
+    endpoint serves.
 
     Traces produced this way are *not* reproducible, and the search will run
     whatever code the model writes. See the warning in the README.
     """
 
-    kind = "claude"
+    kind = "openai"
+    #: Used when ``--model`` is not given.
+    default_model = "gpt-5"
 
-    def __init__(self, model: str = "claude-opus-5", effort: str = "low") -> None:
+    def __init__(self, model: str | None = None, effort: str | None = "low") -> None:
         try:
-            import anthropic
+            import openai
         except ImportError as exc:  # pragma: no cover - depends on the environment
             raise SystemExit(
-                "The claude policy needs the Anthropic SDK: pip install anthropic"
+                "The openai policy needs the OpenAI SDK: pip install openai"
             ) from exc
 
-        self.model = model
-        self.name = f"Claude ({model})"
+        self.model = model or self.default_model
+        self.name = f"OpenAI ({self.model})"
         self.effort = effort
-        self._anthropic = anthropic
-        # Resolves ANTHROPIC_API_KEY, then ANTHROPIC_AUTH_TOKEN, then an
-        # `ant auth login` profile - so an unset key is not necessarily an error.
-        self.client = anthropic.Anthropic()
         self.calls = 0
         self.tokens = 0
+        self._openai = openai
+        # Resolves OPENAI_API_KEY and OPENAI_BASE_URL from the environment.
+        try:
+            self.client = openai.OpenAI()
+        except openai.OpenAIError as exc:
+            raise SystemExit(
+                f"Could not construct the OpenAI client: {exc}\n"
+                "Export OPENAI_API_KEY, or set OPENAI_BASE_URL to an endpoint "
+                "that does not need one."
+            ) from exc
+
+    # -- the interface the search sees --------------------------------------
 
     def propose(
         self, task: Task, data: dict, n: int, reflections: list[str]
     ) -> list[Proposal]:
+        text, tokens = self._complete(self._prompt(task, data, n, reflections))
+        self.calls += 1
+        self.tokens += tokens
+        return self._parse(task, text, n, data)
+
+    def info(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "name": self.name,
+            "model": self.model,
+            "effort": self.effort,
+            "seed": None,
+            "calls": self.calls,
+            "tokens": self.tokens,
+            "tokens_are_estimated": False,
+        }
+
+    # -- the request --------------------------------------------------------
+
+    def _complete(self, prompt: str) -> tuple[str, int]:
+        """Send one prompt. Returns the reply text and the tokens it used."""
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": SYSTEM},
+                {"role": "user", "content": prompt},
+            ],
+            "max_completion_tokens": 8000,
+        }
+        # Only the reasoning models accept reasoning_effort. Rather than keep a
+        # list of which ones do - it changes every few months - send it, and
+        # drop it for good the first time an endpoint says no.
+        if self.effort:
+            request["reasoning_effort"] = self.effort
+
+        try:
+            response = self._create(request)
+        except self._openai.APIStatusError as exc:
+            if self.effort and "reasoning_effort" in str(exc):
+                self.effort = None
+                request.pop("reasoning_effort")
+                response = self._create(request)
+            else:
+                raise SystemExit(f"OpenAI request failed: {exc}") from exc
+
+        usage = response.usage
+        tokens = usage.total_tokens if usage else 0
+
+        choice = response.choices[0] if response.choices else None
+        if choice is None or getattr(choice.message, "refusal", None):
+            return "", tokens
+        return choice.message.content or "", tokens
+
+    def _create(self, request: dict[str, Any]):
+        try:
+            return self.client.chat.completions.create(**request)
+        except self._openai.APIConnectionError as exc:
+            raise SystemExit(f"Could not reach the OpenAI API: {exc}") from exc
+
+    # -- turning a reply into moves -----------------------------------------
+
+    @staticmethod
+    def _prompt(task: Task, data: dict, n: int, reflections: list[str]) -> str:
         notes = ""
         if reflections:
             joined = "\n".join(f"- {r.split('|')[0].strip()}" for r in reflections)
@@ -129,34 +212,14 @@ class ClaudeLLM:
                 "\n\nNotes you wrote after earlier attempts failed. Do not repeat "
                 f"those mistakes:\n{joined}"
             )
-        prompt = (
+        return (
             f"{task.render(data)}{notes}\n\n"
             f"Propose exactly {n} distinct next actions.\n{task.action_schema()}"
         )
 
-        try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=8000,
-                system=SYSTEM,
-                output_config={"effort": self.effort},
-                messages=[{"role": "user", "content": prompt}],
-            )
-        except self._anthropic.APIStatusError as exc:
-            raise SystemExit(f"Claude request failed: {exc}") from exc
-        except self._anthropic.APIConnectionError as exc:
-            raise SystemExit(f"Could not reach the Claude API: {exc}") from exc
-
-        self.calls += 1
-        self.tokens += response.usage.input_tokens + response.usage.output_tokens
-
-        if response.stop_reason == "refusal":
-            return []
-
-        text = "".join(b.text for b in response.content if b.type == "text")
-        return self._parse(task, text, n)
-
-    def _parse(self, task: Task, text: str, n: int) -> list[Proposal]:
+    def _parse(
+        self, task: Task, text: str, n: int, data: dict
+    ) -> list[Proposal]:
         """Turn the reply into proposals, dropping anything malformed.
 
         A policy that occasionally returns nothing usable is normal; the search
@@ -168,7 +231,7 @@ class ClaudeLLM:
         out: list[Proposal] = []
         for item in payload.get("candidates", [])[:n]:
             try:
-                action = task.parse_action(item)
+                action = task.parse_action(item, data)
             except (KeyError, ValueError, TypeError):
                 continue
             try:
@@ -185,18 +248,6 @@ class ClaudeLLM:
                 )
             )
         return out
-
-    def info(self) -> dict[str, Any]:
-        return {
-            "kind": self.kind,
-            "name": self.name,
-            "model": self.model,
-            "effort": self.effort,
-            "seed": None,
-            "calls": self.calls,
-            "tokens": self.tokens,
-            "tokens_are_estimated": False,
-        }
 
 
 def _first_json_object(text: str) -> dict | None:
@@ -224,15 +275,34 @@ def _first_json_object(text: str) -> dict | None:
     return None
 
 
-def build_policy(kind: str, seed: int, model: str) -> MockLLM | ClaudeLLM:
+#: Everything ``--llm`` accepts, in the order it is offered on the command line.
+POLICIES = ("mock", "openai")
+
+
+def build_policy(
+    kind: str, seed: int, model: str | None = None
+) -> MockLLM | OpenAILLM:
     """Construct the policy named on the command line."""
     if kind == "mock":
         return MockLLM(seed=seed)
-    if kind == "claude":
-        if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
-            print(
-                "note: no ANTHROPIC_API_KEY in the environment; the SDK will fall "
-                "back to an `ant auth login` profile if one exists."
-            )
-        return ClaudeLLM(model=model)
-    raise SystemExit(f"unknown policy {kind!r}: expected 'mock' or 'claude'")
+
+    if kind == "openai":
+        if not os.environ.get("OPENAI_API_KEY"):
+            if os.environ.get("OPENAI_BASE_URL"):
+                print(
+                    "note: no OPENAI_API_KEY in the environment; using "
+                    "OPENAI_BASE_URL, which is assumed not to need one."
+                )
+            else:
+                raise SystemExit(
+                    "The openai policy needs an API key. Export OPENAI_API_KEY:\n"
+                    "    export OPENAI_API_KEY=sk-...       # macOS / Linux\n"
+                    "    $env:OPENAI_API_KEY = 'sk-...'     # PowerShell\n"
+                    "Or set OPENAI_BASE_URL to a compatible endpoint that does "
+                    "not need one."
+                )
+        return OpenAILLM(model=model)
+
+    raise SystemExit(
+        f"unknown policy {kind!r}: expected one of {', '.join(POLICIES)}"
+    )
