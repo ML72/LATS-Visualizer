@@ -5,7 +5,7 @@ Where the tree from Part 2 gets an algorithm: a twenty-year-old one. Covers the
 history, the bandit intuition behind the selection rule, and then the four
 classical operations animated on a growing tree.
 
-The formulas are deliberately absent here - Part 5 puts them on screen. This
+The formulas are deliberately absent here - Part 4 puts them on screen. This
 part only has to make you believe that "spend the next sample where the payoff
 is both promising and uncertain" is a sensible thing to do.
 
@@ -25,7 +25,7 @@ from create_video.components import (  # noqa: E402
     LATSScene, SearchTree, chip, overlay, section_card, strike,
 )
 from create_video.theme import (  # noqa: E402
-    ACCENT, BAD, FS_BODY, FS_H3, FS_SMALL, FS_TINY, GOOD, INK, INK_DIM,
+    ACCENT, FS_BODY, FS_H3, FS_SMALL, FS_TINY, GOOD, INK, INK_DIM,
     INK_FAINT, PRIMARY, STROKE, SURFACE_2, T_FAST, T_NORM, T_SLOW, TEAL,
     cap_width, txt,
 )
@@ -33,47 +33,81 @@ from create_video.theme import (  # noqa: E402
 NARRATION = {
     "beat_section": [
         "Now we need an algorithm for growing that tree. There is a very good "
-        "one, and it is old.",
+        "one, and it is twenty years old.",
     ],
     "beat_history": [
-        "Monte Carlo Tree Search was named in 2006. That same year, Kocsis and "
-        "Szepesvari gave it the selection rule it still uses, called UCT.",
+        "Monte Carlo Tree Search was named by Rémi Coulom in 2006. The same "
+        "year, Kocsis and Szepesvári gave it the selection rule it still "
+        "uses: UCT - upper confidence bounds applied to trees.",
         "Ten years later it was the search algorithm inside AlphaGo. This is "
-        "not a new idea. It is a very well-tested one.",
+        "not a new idea; it is a very well-tested one.",
     ],
     "beat_bandit": [
-        "The core question is older still. Three machines. You have pulled the "
-        "first eight times, averaging point six two. The second, three times. "
-        "The third, exactly once.",
+        "The question underneath it is the multi-armed bandit. Three "
+        "machines, unknown payouts. You have pulled the first eight times, "
+        "averaging point six two; the second, three times; the third, exactly "
+        "once.",
         "Which next? The first has the best record - but you have barely "
-        "looked at the third. Its point four could easily be bad luck.",
-        "So score each option by two things added together: how good it looks, "
-        "plus how little you have looked. Take the largest.",
+        "looked at the third. Its point four zero is a single sample, and "
+        "could easily be bad luck.",
+        "So score each arm by two terms added together: its empirical mean, "
+        "plus a bonus that grows as the pull count shrinks.",
+        "That sum is an upper confidence bound. A concentration inequality "
+        "puts the true mean below it with high probability, so taking the "
+        "largest is optimism under uncertainty.",
     ],
     "beat_ops": [
         "Monte Carlo Tree Search turns that into four operations, repeated "
-        "over and over.",
-        "Selection. Start at the root and walk down, at each level taking the "
-        "child with the highest score, until you reach a node you have not "
-        "expanded yet.",
-        "Expansion. Add its children to the tree.",
-        "Simulation. From one of those children, play the game out to the end, "
-        "and see what you get.",
-        "Backpropagation. Take that final result and push it back up the path "
-        "you came down, updating every ancestor on the way.",
-        "Then do it again - and selection now has real numbers to work with.",
+        "until the budget runs out.",
+        "Selection. From the root, walk down applying that bandit rule at "
+        "each level, until you reach a node that has not been expanded. That "
+        "walk is called the tree policy.",
+        "Expansion. Add children of that node to the tree.",
+        "Simulation, or rollout. From one child, play out to a terminal state "
+        "- classically with a cheap random policy - and take the outcome.",
+        "Backpropagation. Walk back up the path, incrementing each ancestor's "
+        "visit count and folding the outcome into its value.",
+        "Then repeat, now with real numbers to select on.",
     ],
     "beat_asymmetric": [
-        "Do that a few thousand times and the tree comes out lopsided, which "
-        "is exactly the point. Almost all of the compute went into the branch "
-        "that looked worth it, and the hopeless branches were sampled once and "
+        "Do that a few thousand times and the tree comes out badly "
+        "lopsided, which is the point. Nearly all the compute went into the "
+        "branch that looked worth it; the hopeless ones were sampled once and "
         "left alone.",
+        "Kocsis and Szepesvári also showed that as the number of simulations "
+        "grows, the probability of picking a suboptimal action at the root "
+        "goes to zero.",
     ],
     "beat_bridge": [
-        "But notice what AlphaGo needed to make this work: a trained network to "
-        "propose moves, a trained network to score positions, and a game it "
-        "could play out at random. For a language agent we have none of those.",
+        "But notice what AlphaGo needed. A trained policy network to propose "
+        "moves, a trained value network to score positions, and a simulator "
+        "it could play out at random millions of times.",
+        "For a language agent we have none of the three: no policy network "
+        "over arbitrary text, no value network for half-written code, no "
+        "cheap simulator.",
     ],
+}
+
+ON_SCREEN = {
+    "beat_section": "Section card - 3 / Monte Carlo Tree Search.",
+    "beat_history": "A timeline: 2006 Coulom names MCTS; 2006 Kocsis and "
+                    "Szepesvári derive UCT; 2016 AlphaGo beats Lee Sedol; "
+                    "2024 LATS.",
+    "beat_bandit": "Three slot machines - Arm A, eight pulls, mean 0.62; Arm "
+                   "B, three pulls, 0.55; Arm C, one pull, 0.40. A is ringed "
+                   "Best record, C is ringed Barely looked at. Then the "
+                   "recipe, captioned as an upper confidence bound.",
+    "beat_ops": "The four operations light up one at a time on a rail to the "
+                "right while the tree performs each of them: root "
+                "highlighted, three children added, a dashed playout "
+                "returning r = 0.8, then the value flowing back up. Then a "
+                "faster second round.",
+    "beat_asymmetric": "The tree grows two more levels down one branch only, "
+                       "then everything except that branch dims to almost "
+                       "nothing; the UCT convergence result appears "
+                       "underneath.",
+    "beat_bridge": "Three requirements appear as chips, then each is struck "
+                   "through in turn.",
 }
 
 
@@ -108,21 +142,20 @@ class Part3MCTS(LATSScene):
                             "A 2006 answer to “where should I look next?”")
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in card],
                               lag_ratio=0.18), run_time=T_NORM)
-        self.wait(7.0)
+        self.wait(7.6)
         self.play(FadeOut(card), run_time=T_FAST)
 
     # -- 2. Twenty years of history -----------------------------------------
 
     def beat_history(self):
-        self.set_header("Not a New Idea")
+        self.set_header("MCTS History")
 
         axis = Line([-5.6, -0.15, 0], [5.6, -0.15, 0], stroke_color=STROKE,
                     stroke_width=3)
         self.play(Create(axis), run_time=T_NORM)
 
         events = [
-            (-4.6, "2006",
-             "Coulom names\nMonte Carlo Tree Search", PRIMARY, True),
+            (-4.6, "2006", "Coulom names MCTS", PRIMARY, True),
             (-1.4, "2006",
              "Kocsis and Szepesvári\nderive the UCT rule", PRIMARY, False),
             (1.8, "2016", "AlphaGo beats\nLee Sedol", ACCENT, True),
@@ -142,8 +175,8 @@ class Part3MCTS(LATSScene):
         for mark in marks:
             self.play(FadeIn(mark, shift=UP * 0.15 if mark[2].get_y() > -0.15
                              else DOWN * 0.15), run_time=0.55)
-            self.wait(1.55)
-        self.wait(7.9)
+            self.wait(1.9)
+        self.wait(13.0)
         self.play(FadeOut(VGroup(axis, marks)), run_time=T_NORM)
 
     # -- 3. The bandit question ---------------------------------------------
@@ -167,7 +200,7 @@ class Part3MCTS(LATSScene):
         stats = VGroup(
             txt(f"{pulls} pull" + ("" if pulls == 1 else "s"),
                 size=FS_TINY, color=INK_FAINT),
-            txt(f"mean {mean:.2f}", size=FS_BODY, color=INK, weight=MEDIUM),
+            txt(f"Mean {mean:.2f}", size=FS_BODY, color=INK, weight=MEDIUM),
         ).arrange(DOWN, buff=0.12)
         machine = VGroup(body, slot, lever_arm, knob, tag)
         stats.next_to(machine, DOWN, buff=0.3)
@@ -176,16 +209,16 @@ class Part3MCTS(LATSScene):
         return group
 
     def beat_bandit(self):
-        self.set_header("Which One Do You Pull Next?")
+        self.set_header("What Arm to Select?")
 
-        arms = [("arm A", 8, 0.62, -3.9, PRIMARY),
-                ("arm B", 3, 0.55, 0.0, PRIMARY),
-                ("arm C", 1, 0.40, 3.9, PRIMARY)]
+        arms = [("Arm A", 8, 0.62, -3.9, PRIMARY),
+                ("Arm B", 3, 0.55, 0.0, PRIMARY),
+                ("Arm C", 1, 0.40, 3.9, PRIMARY)]
         machines = VGroup(*[self._machine(*a) for a in arms])
-        machines.move_to([0, 1.05, 0])
+        machines.move_to([0, 1.15, 0])
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in machines],
                               lag_ratio=0.25), run_time=1.5)
-        self.wait(10.0)
+        self.wait(14.0)
 
         # Best record vs least explored.
         best = SurroundingRectangle(machines[0], color=GOOD, buff=0.16,
@@ -199,7 +232,7 @@ class Part3MCTS(LATSScene):
         self.play(Create(best), FadeIn(best_tag), run_time=T_NORM)
         self.wait(1.6)
         self.play(Create(least), FadeIn(least_tag), run_time=T_NORM)
-        self.wait(8.2)
+        self.wait(10.4)
 
         # The answer, as two quantities added.
         recipe = VGroup(
@@ -210,14 +243,24 @@ class Part3MCTS(LATSScene):
             chip("Take the largest", ACCENT, size=FS_SMALL),
         ).arrange(RIGHT, buff=0.3)
         cap_width(recipe, 12.4)
-        recipe.move_to([0, -1.95, 0])
+        recipe.move_to([0, -1.85, 0])
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in recipe],
                               lag_ratio=0.2), run_time=1.4)
-        self.wait(4.6)
+        self.wait(5.0)
 
-        self.wait(2.6)
+        # Name the thing the recipe is: this row is UCB1, in words.
+        gloss = txt("An upper confidence bound: the mean measured so far, "
+                    "plus how uncertain it still is", size=FS_SMALL,
+                    color=INK_FAINT)
+        cap_width(gloss, 11.8)
+        gloss.move_to([0, -2.62, 0])
+        cite = self.footnote("UCB1  ·  Auer, Cesa-Bianchi and Fischer, 2002")
+        self.play(FadeIn(gloss, shift=UP * 0.15), FadeIn(cite),
+                  run_time=T_NORM)
+        self.wait(10.6)
+
         self.play(FadeOut(VGroup(machines, best, best_tag, least, least_tag,
-                                 recipe)), run_time=T_NORM)
+                                 recipe, gloss, cite)), run_time=T_NORM)
 
     # -- 4. The four operations ---------------------------------------------
 
@@ -255,7 +298,7 @@ class Part3MCTS(LATSScene):
         return VGroup(line, badge)
 
     def beat_ops(self):
-        self.set_header("Four Operations, Repeated")
+        self.set_header("Core MCTS Operations")
 
         rail = self._rail()
         self.play(LaggedStart(*[FadeIn(r, shift=LEFT * 0.2) for r in rail],
@@ -271,7 +314,7 @@ class Part3MCTS(LATSScene):
         # --- round one -----------------------------------------------------
         self.play(*self._light(rail, 0), run_time=T_FAST)
         self.play(*tree.highlight_path(["s0"]), run_time=T_FAST)
-        self.wait(6.4)
+        self.wait(8.0)
         self.play(*tree.reset_path(["s0"]), run_time=T_FAST)
 
         self.play(*self._light(rail, 1), run_time=T_FAST)
@@ -285,7 +328,7 @@ class Part3MCTS(LATSScene):
         roll = self._rollout(tree, "b", 0.8)
         self.play(Create(roll[0]), run_time=T_NORM)
         self.play(FadeIn(roll[1], scale=0.7), run_time=T_FAST)
-        self.wait(4.2)
+        self.wait(4.6)
 
         self.play(*self._light(rail, 3), run_time=T_FAST)
         for key, value in (("b", 0.80), ("s0", 0.80)):
@@ -294,7 +337,7 @@ class Part3MCTS(LATSScene):
                             flash_radius=0.42), run_time=0.55)
             self.wait(0.5)
         self.play(FadeOut(roll), run_time=T_FAST)
-        self.wait(6.4)
+        self.wait(6.0)
 
         # --- round two -----------------------------------------------------
         self.play(*self._light(rail, 0), run_time=T_FAST)
@@ -352,7 +395,18 @@ class Part3MCTS(LATSScene):
             "s0", "b", "b2", "b2a", "b2a1", "b2a2", "b2b"], opacity=0.22),
             run_time=T_SLOW)
         self.wait(11.0)
-        self.play(FadeOut(tree), run_time=T_NORM)
+
+        converge = txt("As simulations grow, the root's chance of choosing a "
+                       "suboptimal action goes to zero", size=FS_SMALL,
+                       color=INK_FAINT)
+        cap_width(converge, 11.8)
+        converge.move_to([0, -3.0, 0])
+        cite = self.footnote("Kocsis and Szepesvári, 2006")
+        self.play(FadeIn(converge, shift=UP * 0.15), FadeIn(cite),
+                  run_time=T_NORM)
+        self.wait(9.8)
+        self.play(FadeOut(tree), FadeOut(converge), FadeOut(cite),
+                  run_time=T_NORM)
 
     # -- 6. What AlphaGo had that we do not ---------------------------------
 
@@ -367,7 +421,7 @@ class Part3MCTS(LATSScene):
         needs.move_to([0, 0.35, 0])
         self.play(LaggedStart(*[FadeIn(n, shift=UP * 0.2) for n in needs],
                               lag_ratio=0.25), run_time=1.4)
-        self.wait(6.8)
+        self.wait(9.0)
 
         # None of the three survive contact with a language agent. Striking
         # them out says so without a caption.
@@ -375,6 +429,6 @@ class Part3MCTS(LATSScene):
             rule = strike(need, width=4)
             self.play(Create(rule), need.animate.set_opacity(0.35),
                       run_time=0.65)
-        self.wait(5.6)
+        self.wait(9.4)
         self.clear_body(run_time=T_NORM)
         self.drop_header()

@@ -28,12 +28,18 @@ from __future__ import annotations
 
 from manim import *
 
+from .fontpath import register_bundled
 from .texpath import ensure_latex_on_path
 
 # Manim shells out to `latex` and `dvisvgm` for every equation. On Windows,
 # MiKTeX is often installed per-user and is missing from the PATH a virtualenv
 # sees, so make it reachable before any MathTex is constructed.
 ensure_latex_on_path()
+
+# The fonts in create_video/fonts/ are registered with Pango for this process
+# only, before anything asks which faces exist. Without this the render falls
+# back to whatever the machine happens to have installed.
+register_bundled()
 
 # ---------------------------------------------------------------------------
 # Palette

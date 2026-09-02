@@ -5,10 +5,11 @@ Opens with the whole argument as one picture: a straight chain of decisions
 that dead-ends, then fans out into a tree. The title sits over that.
 
 Then the vocabulary the rest of the video leans on - the agent/environment
-loop, and the fact that for a language agent the *state* is the whole
-transcript so far while the *reward* arrives only at the very end.
+loop, the five standard reinforcement-learning terms, and the fact that for a
+language agent the *state* is the whole transcript so far while the *reward*
+usually arrives only at the very end.
 
-Also introduces the running example (``merge_intervals``) that Part 6 searches
+Also introduces the running example (``merge_intervals``) that Part 5 searches
 over, and says out loud that it is worth remembering.
 
 Render:  manim -qh scripts/create_video/parts/part1_agents.py Part1Agents
@@ -31,14 +32,14 @@ from create_video.components import (  # noqa: E402
     section_card,
 )
 from create_video.theme import (  # noqa: E402
-    ACCENT, BAD, BG, FS_BODY, FS_H3, FS_SMALL, FS_TINY, GOOD, INK, INK_DIM,
+    ACCENT, BAD, FS_BODY, FS_H3, FS_SMALL, FS_TINY, GOOD, INK, INK_DIM,
     INK_FAINT, PRIMARY, STROKE, SURFACE_2, TEAL, T_FAST, T_NORM, T_SLOW,
-    body_zone, cap_width, fit_in, mathtex, mono, txt,
+    cap_width, mathtex, mono, txt,
 )
 
 #: Author list for the opening card. Review is single-blind, so real names go
 #: on the video. EDIT THIS to include every author before submitting.
-AUTHORS = "Michael Li"
+AUTHORS = "Michael Li, Eric Bae, Tianyi Huang"
 
 #: The venue line under the title.
 VENUE = "NeurIPS 2026 Education Track"
@@ -51,42 +52,83 @@ NARRATION = {
         "But what if it could go back?",
     ],
     "beat_section": [
-        "Start with how an agent works at all. It only takes four words.",
+        "Start with what an agent is, and the vocabulary everything after "
+        "this rests on.",
     ],
     "beat_loop": [
-        "An agent is anything that sits in a loop with an environment. The "
-        "agent takes an action. The environment changes, and hands back an "
-        "observation. Then another action, and around we go.",
-        "Somewhere in that loop a reward comes back too - a number saying how "
-        "well things are going. The agent's whole job is to make that number "
-        "large.",
+        "An agent is anything that sits in a closed loop with an environment. "
+        "It takes an action; the environment transitions and hands back an "
+        "observation; then another action, and round we go until the episode "
+        "ends.",
+        "Somewhere in that loop a reward comes back too - a scalar saying how "
+        "well things are going. The objective is to maximise total reward "
+        "over a trajectory, not at any single step.",
     ],
     "beat_vocab": [
-        "So, four words. The environment is the world the agent acts in. An "
-        "action is one move in it, and an observation is what comes back.",
-        "The state is everything the agent knows right now. And the reward is "
-        "the score. If you have seen reinforcement learning, this is that "
-        "picture.",
+        "Five terms, the standard reinforcement-learning ones.",
+        "The environment is the world the agent acts in. The state is the "
+        "complete description of that world at a timestep: everything you "
+        "need in order to say what happens next.",
+        "The observation is what the agent sees of that state. If it is the "
+        "whole state you have a Markov decision process; if only part of it, "
+        "a partially observed one - which is where every agent worth building "
+        "lives.",
+        "An action is the move the agent takes at a timestep, and the reward "
+        "is the feedback the environment returns.",
     ],
     "beat_llm_agent": [
-        "Now make the agent a language model, and those four words turn into "
-        "something concrete.",
-        "An action is a piece of text: a thought the model writes down, or a "
-        "tool it calls. An observation is whatever that tool prints back - a "
-        "test result, an error message.",
-        "Here is the task we will use throughout. Write a function that merges "
-        "overlapping intervals. Hold on to it, because in a few minutes we are "
-        "going to search it properly.",
-        "So then, what is the state? It is not a position on a board. It is "
-        "the entire transcript so far: the original question, every action the "
-        "agent has taken, and every observation it has seen.",
+        "A language agent is just an agent where a language model makes the "
+        "decisions. Nothing on the last slide changes - only what fills each "
+        "slot.",
+        "An action is text: a choice in words, a tool call, or a response "
+        "to a user. An observation is text too - tool feedback, user input, "
+        "or data from the environment.",
+        "Here is the task we will use throughout: write a function that "
+        "merges overlapping intervals. In a few minutes we will search it "
+        "properly.",
+        "And the state? Not a position on a board. It is the entire "
+        "transcript: the original question, every action taken, and every "
+        "observation seen.",
+        "That definition is load-bearing. Because the state carries the whole "
+        "history, the process is Markov by construction, and an action is an "
+        "arbitrary string - so the action space is unbounded.",
     ],
     "beat_reward": [
-        "The reward, though, is stingy. The agent writes a solution, the tests "
-        "run, and only then does a single number come back.",
-        "So every step before that is a shot in the dark. The agent commits to "
-        "it without knowing whether it helped.",
+        "The reward, though, is stingy. An environment is free to return a "
+        "reward at every step, and many do.",
+        "But for the tasks we give language agents - a program that must pass "
+        "a test suite, a multi-hop question, a checkout flow on a website - "
+        "there is no informative signal until the trajectory terminates.",
+        "So every decision before it was taken blind: one scalar, many "
+        "steps, and nothing saying which one was the mistake. Credit "
+        "assignment at its hardest.",
     ],
+}
+
+#: What the frame shows, per beat. ``create_video.script`` prints these above
+#: the words, so the script can be followed without the video open.
+ON_SCREEN = {
+    "beat_title": "A chain of decisions grows straight down and dead-ends in "
+                  "red, then fans out into a tree. The tree clears away and "
+                  "the title card comes up.",
+    "beat_section": "Section card - 1 / Agents, States, and Rewards.",
+    "beat_loop": "Agent on the left, environment on the right. An action arc "
+                 "goes over the top, an observation arc comes back "
+                 "underneath, and both pulse; a green Reward chip joins the "
+                 "observation arc.",
+    "beat_vocab": "A compact, wordless copy of the loop, with the state "
+                  "marked on the environment. Five glossed terms appear one "
+                  "at a time, each lighting up the piece of the diagram it "
+                  "names; the state/observation pair is then ringed and the "
+                  "MDP versus POMDP line appears underneath.",
+    "beat_llm_agent": "One line defining a language agent, the action and "
+                      "observation glosses on the left, and a transcript "
+                      "panel on the right. The Task line is circled. A brace "
+                      "labelled State then wraps the whole panel, and "
+                      "s = [x, a_1..a_i, o_1..o_i] appears underneath.",
+    "beat_reward": "The transcript collapses into five plain nodes in a row, "
+                   "a question mark floats over each, and a single amber "
+                   "terminal node appears at the end carrying r = 0.6.",
 }
 
 #: The transcript shown in ``beat_llm_agent``: (tag, body, colour, monospace).
@@ -154,14 +196,10 @@ class Part1Agents(LATSScene):
             ]), run_time=0.55)
         self.wait(1.2)
 
-        # Retire the tree to a watermark. A full-width band sits over it so the
-        # title reads cleanly: full width means no visible side edges, so it
-        # looks like a deliberate plate rather than a box.
-        band = Rectangle(width=config.frame_width + 0.2, height=4.5,
-                         stroke_width=0, fill_color=BG, fill_opacity=0.9)
-        band.move_to(UP * 0.1)
-        overlay(band)
-
+        # Clear the tree away completely before the title lands. A dimmed
+        # watermark behind the card only competes with it - the coloured value
+        # fills stay legible as colour long after they have stopped meaning
+        # anything.
         title = txt("Language Agent Tree Search", size=58, color=INK,
                     weight=BOLD)
         cap_width(title, 12.0)
@@ -177,29 +215,27 @@ class Part1Agents(LATSScene):
         credit.next_to(head, DOWN, buff=0.95)
         overlay(head, credit)
 
-        self.play(tree.animate.set_opacity(0.11), FadeIn(band),
-                  run_time=T_SLOW)
+        self.play(FadeOut(tree), run_time=T_SLOW)
         self.play(FadeIn(title, shift=UP * 0.25), run_time=T_SLOW)
         self.play(Create(rule), FadeIn(sub, shift=UP * 0.12), run_time=T_NORM)
         self.play(FadeIn(credit), run_time=T_NORM)
         self.wait(3.6)
-        self.play(FadeOut(VGroup(head, credit, band)), FadeOut(tree),
-                  run_time=T_SLOW)
+        self.play(FadeOut(VGroup(head, credit)), run_time=T_SLOW)
 
     # -- 2. Section card ----------------------------------------------------
 
     def beat_section(self):
         card = section_card(1, "Agents, States, and Rewards",
-                            "How an agent works, in four words")
+                            "What is an agent?")
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in card],
                               lag_ratio=0.18), run_time=T_NORM)
-        self.wait(4.2)
+        self.wait(5.0)
         self.play(FadeOut(card), run_time=T_FAST)
 
     # -- 3. The agent/environment loop --------------------------------------
 
     def beat_loop(self):
-        self.set_header("An Agent Is a Loop")
+        self.set_header("What is an Agent?")
 
         agent = agent_glyph(scale=1.45).move_to([-3.5, 0.55, 0])
         env = env_glyph(scale=1.45).move_to([3.5, 0.55, 0])
@@ -212,7 +248,7 @@ class Part1Agents(LATSScene):
                   FadeIn(agent_cap, shift=RIGHT * 0.3), run_time=T_NORM)
         self.play(FadeIn(env, shift=LEFT * 0.3),
                   FadeIn(env_cap, shift=LEFT * 0.3), run_time=T_NORM)
-        self.wait(1.6)
+        self.wait(1.8)
 
         # Action: agent -> environment, arcing over the top.
         act = CurvedArrow(agent.get_right() + UP * 0.16 + RIGHT * 0.12,
@@ -231,15 +267,15 @@ class Part1Agents(LATSScene):
         obs_lab.next_to(obs, DOWN, buff=0.14)
 
         self.play(Create(act), FadeIn(act_lab), run_time=T_NORM)
-        self.wait(2.2)
+        self.wait(2.4)
         self.play(Create(obs), FadeIn(obs_lab), run_time=T_NORM)
-        self.wait(2.6)
+        self.wait(4.0)
 
         # The loop runs, and runs, and runs.
         for target in (act, obs, act, obs):
             self.play(Indicate(target, color=ACCENT, scale_factor=1.04),
                       run_time=0.52)
-        self.wait(2.4)
+        self.wait(3.7)
 
         reward = chip("Reward", GOOD)
         reward.next_to(obs_lab, DOWN, buff=0.22)
@@ -249,15 +285,12 @@ class Part1Agents(LATSScene):
         for target in (act, obs, act, obs):
             self.play(Indicate(target, color=ACCENT, scale_factor=1.04),
                       run_time=0.52)
-        self.wait(6.2)
+        self.wait(8.4)
 
         self.loop = VGroup(agent, env, agent_cap, env_cap, act, act_lab,
                            obs, obs_lab, reward)
-        self.loop_parts = {"Environment": env, "Action": act,
-                           "Observation": obs, "State": agent,
-                           "Reward": reward}
 
-    # -- 4. The four words --------------------------------------------------
+    # -- 4. The five terms --------------------------------------------------
 
     @staticmethod
     def _mini_loop(centre, scale=0.62):
@@ -265,7 +298,12 @@ class Part1Agents(LATSScene):
 
         Built fresh rather than shrinking the big diagram: at this size any
         text in it would be unreadable, so the mini version carries only
-        shapes, and the vocabulary rows point at them one at a time.
+        shapes plus one ``s_t`` marker, and the vocabulary rows point at them
+        one at a time.
+
+        The state marker hangs off the environment on purpose. The state is a
+        property of the world, not of the agent; what the *agent* receives is
+        the observation, which is the arc coming back.
         """
         agent = agent_glyph(scale=1.3).move_to([-2.5, 0.35, 0])
         env = env_glyph(scale=1.3).move_to([2.5, 0.35, 0])
@@ -277,93 +315,131 @@ class Part1Agents(LATSScene):
                           agent.get_right() + DOWN * 0.26 + RIGHT * 0.1,
                           angle=-0.6, color=TEAL, stroke_width=4,
                           tip_length=0.2)
+        state = mathtex(r"s_t", size=40, color=ACCENT)
+        state.next_to(env, RIGHT, buff=0.26)
         # The reward rides back with the observation, so it lives on that arc.
         coin = Dot(obs.point_from_proportion(0.5), radius=0.16, color=GOOD)
-        group = VGroup(act, obs, agent, env, coin).scale(scale)
+        group = VGroup(act, obs, agent, env, state, coin).scale(scale)
         group.move_to(centre)
-        group.targets = {"Environment": env, "Action": act,
-                         "Observation": obs, "State": agent, "Reward": coin}
+        group.targets = {"Environment": env, "State": state, "Action": act,
+                         "Observation": obs, "Reward": coin}
         return group
 
     def beat_vocab(self):
-        self.set_header("Four Words")
+        self.set_header("Terminology")
 
         # Swap the full diagram for a compact, wordless one so each term can be
         # pointed at the thing it names.
         self.play(FadeOut(self.loop), run_time=T_FAST)
-        diagram = self._mini_loop([0, 1.85, 0])
+        diagram = self._mini_loop([0, 1.95, 0])
         self.play(FadeIn(diagram), run_time=T_NORM)
 
         rows = [
-            ("Environment", TEAL, "the world the agent acts in",
-             diagram.targets["Environment"]),
-            ("Action", PRIMARY, "one move in that world",
-             diagram.targets["Action"]),
-            ("Observation", TEAL, "what the world hands back",
-             diagram.targets["Observation"]),
-            ("State", ACCENT, "everything the agent knows right now",
-             diagram.targets["State"]),
-            ("Reward", GOOD, "the score, at the end",
-             diagram.targets["Reward"]),
+            ("Environment", TEAL, "The world the agent acts in"),
+            ("State", ACCENT,
+             "The complete description of the world at a timestep"),
+            ("Observation", TEAL, "What the agent sees at a timestep"),
+            ("Action", PRIMARY, "The move an agent takes at a timestep"),
+            ("Reward", GOOD, "The feedback returned to the agent"),
         ]
         entries, targets = VGroup(), []
-        for name, color, gloss, target in rows:
+        for name, color, gloss in rows:
             tag = chip(name, color, size=FS_SMALL)
             body = txt(gloss, size=FS_BODY, color=INK_DIM)
             entries.add(VGroup(tag, body))
-            targets.append(target)
+            targets.append(diagram.targets[name])
         widest = max(row[0].width for row in entries)
         for row in entries:
             row[1].next_to(row[0], RIGHT, buff=0.34 + (widest - row[0].width))
-        entries.arrange(DOWN, aligned_edge=LEFT, buff=0.42)
-        entries.move_to([0, -1.2, 0])
+        entries.arrange(DOWN, aligned_edge=LEFT, buff=0.32)
+        entries.move_to([0, -0.95, 0])
 
-        for row, target in zip(entries, targets):
-            self.play(FadeIn(row, shift=RIGHT * 0.22),
-                      Indicate(target, color=row[0][0].get_color(),
+        def reveal(index, hold):
+            self.play(FadeIn(entries[index], shift=RIGHT * 0.22),
+                      Indicate(targets[index],
+                               color=entries[index][0][0].get_color(),
                                scale_factor=1.14),
                       run_time=0.85)
-            self.wait(1.5)
-        self.wait(6.0)
+            self.wait(hold)
 
-        self.play(FadeOut(entries), FadeOut(diagram), run_time=T_NORM)
+        # Environment, state, observation - then the distinction between the
+        # last two, which is the one worth stopping on.
+        for index, hold in ((0, 3.0), (1, 4.5), (2, 4.0)):
+            reveal(index, hold)
 
-    # -- 5. What the four words mean for a language agent -------------------
+        pair = SurroundingRectangle(VGroup(entries[1], entries[2]),
+                                    color=INK_FAINT, buff=0.16,
+                                    corner_radius=0.14, stroke_width=2)
+        pomdp = mathtex(r"o_t = s_t \;\Rightarrow\; \text{MDP}"
+                        r"\qquad\qquad o_t \subset s_t \;\Rightarrow\;"
+                        r"\text{POMDP}", size=30, color=INK_FAINT)
+        cap_width(pomdp, 10.5)
+        pomdp.move_to([0, -3.1, 0])
+        self.play(Create(pair), FadeIn(pomdp), run_time=T_NORM)
+        self.wait(10.0)
+        self.play(FadeOut(pair), run_time=T_FAST)
+
+        for index, hold in ((3, 4.5), (4, 4.5)):
+            reveal(index, hold)
+        self.wait(2.6)
+
+        self.play(FadeOut(entries), FadeOut(diagram), FadeOut(pomdp),
+                  run_time=T_NORM)
+
+    # -- 5. What the five terms mean for a language agent -------------------
 
     def beat_llm_agent(self):
-        self.set_header("For a Language Agent")
+        self.set_header("What is a Language Agent?")
 
+        # One line of definition across the top, so the two columns underneath
+        # can start from a shared baseline instead of a staircase.
+        premise = txt("A language agent is just an agent where an LLM makes "
+                      "the decisions", size=FS_BODY, color=INK)
+        cap_width(premise, 12.4)
+        premise.move_to([0, 2.16, 0])
+        self.play(FadeIn(premise, shift=DOWN * 0.15), run_time=T_NORM)
+        self.wait(3.4)
+
+        top_y = 1.32
         mapping = VGroup()
         for name, color, gloss in [
-            ("Action", PRIMARY, "a piece of text: a thought,\nor a tool call"),
-            ("Observation", TEAL, "whatever the tool prints back"),
+            ("Action", PRIMARY,
+             "Text-based choices, tool calls,\nor responses"),
+            ("Observation", TEAL,
+             "Textual feedback, user inputs,\nor environment data"),
         ]:
             tag = chip(name, color, size=FS_SMALL)
             body = txt(gloss, size=FS_SMALL, color=INK_DIM, line_spacing=0.8)
-            body.next_to(tag, DOWN, buff=0.2, aligned_edge=LEFT)
+            body.next_to(tag, DOWN, buff=0.22, aligned_edge=LEFT)
             mapping.add(VGroup(tag, body))
-        mapping.arrange(DOWN, aligned_edge=LEFT, buff=0.5)
-        mapping.move_to([-4.55, 0.95, 0])
+        mapping.arrange(DOWN, aligned_edge=LEFT, buff=0.62)
+        mapping.move_to([-4.3, 0, 0])
+        mapping.shift(UP * (top_y - mapping.get_top()[1]))
+
+        # The panel's *top* is pinned to the same line as the left column, so
+        # the two halves of the slide start together instead of leaving a gap
+        # over the transcript.
+        box = panel(7.0, 3.3, "Transcript", accent=STROKE)
+        box[0].move_to([2.8, top_y - 3.3 / 2, 0])
+        box[1].next_to(box[0].get_corner(UL), UR, buff=0.0)
+        box[1].shift(RIGHT * 0.06 + UP * 0.16)
 
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in mapping],
                               lag_ratio=0.25), run_time=1.2)
+        self.play(FadeIn(box), run_time=T_NORM)
         self.wait(11.0)
 
-        box = panel(7.6, 3.5, "transcript", accent=STROKE)
-        box.move_to([2.15, -0.35, 0])
-        self.play(FadeIn(box), run_time=T_NORM)
-
         # Two fixed columns inside the panel: a tag gutter and a body column.
-        tag_x = box[0].get_left()[0] + 0.42
-        body_x = tag_x + 1.55
-        top_y = box[0].get_top()[1] - 0.62
+        tag_x = box[0].get_left()[0] + 0.4
+        body_x = tag_x + 1.5
+        top_row = box[0].get_top()[1] - 0.56
         rendered = VGroup()
         for i, (tag, body, color, is_code) in enumerate(TRANSCRIPT):
             t = txt(tag, size=FS_TINY, color=color, weight=MEDIUM)
             b = (mono(body, size=FS_TINY, color=INK_DIM) if is_code
                  else txt(body, size=FS_SMALL, color=INK_DIM))
-            cap_width(b, 5.1)
-            y = top_y - i * 0.6
+            cap_width(b, 4.7)
+            y = top_row - i * 0.56
             t.move_to([tag_x, y, 0], aligned_edge=LEFT)
             b.move_to([body_x, y, 0], aligned_edge=LEFT)
             rendered.add(VGroup(t, b))
@@ -373,30 +449,34 @@ class Part1Agents(LATSScene):
         self.play(FadeIn(rendered[0], shift=UP * 0.12), run_time=0.42)
         self.play(Circumscribe(rendered[0], color=ACCENT, buff=0.16,
                                stroke_width=3, run_time=1.5))
-        self.wait(9.8)
+        self.wait(9.0)
         for row in rendered[1:]:
             self.play(FadeIn(row, shift=UP * 0.12), run_time=0.42)
             self.wait(0.62)
-        self.wait(2.2)
+        self.wait(2.4)
 
-        # The punchline: the state is the whole transcript.
-        self.play(FadeOut(mapping), run_time=T_FAST)
+        # The punchline: the state is the whole transcript. With the left
+        # column gone the panel would sit off to one side, so it slides across
+        # to make room for the brace and land the pair on the centre line.
+        self.play(FadeOut(mapping), FadeOut(premise), run_time=T_FAST)
+        self.play(VGroup(box, rendered).animate.shift(LEFT * 1.85),
+                  run_time=T_NORM)
         brace = Brace(box[0], LEFT, color=ACCENT, buff=0.18)
-        state_lab = txt("The state", size=FS_BODY, color=ACCENT, weight=MEDIUM)
+        state_lab = txt("State", size=FS_BODY, color=ACCENT, weight=MEDIUM)
         state_lab.next_to(brace, LEFT, buff=0.22)
         self.play(GrowFromCenter(brace), FadeIn(state_lab, shift=RIGHT * 0.2),
                   run_time=T_NORM)
-        self.wait(6.2)
+        self.wait(7.0)
 
-        formal = mathtex(r"s \;=\; [\, x,\; a_1 \ldots a_i,\; o_1 \ldots o_i \,]",
-                         size=34)
-        formal.move_to([0, -2.88, 0])
+        formal = mathtex(
+            r"s \;=\; [\, x,\; a_1 \ldots a_i,\; o_1 \ldots o_i \,]", size=34)
+        formal.move_to([0, -2.58, 0])
         gloss = txt("The question, every action, every observation",
                     size=FS_TINY, color=INK_FAINT)
-        gloss.next_to(formal, DOWN, buff=0.16)
+        gloss.next_to(formal, DOWN, buff=0.18)
         self.play(FadeIn(formal, shift=UP * 0.2), run_time=T_NORM)
         self.play(FadeIn(gloss), run_time=T_FAST)
-        self.wait(8.6)
+        self.wait(11.0)
 
         self.transcript = VGroup(box, rendered)
         self.play(FadeOut(VGroup(brace, state_lab, formal, gloss)),
@@ -410,7 +490,7 @@ class Part1Agents(LATSScene):
         The picture carries the point: five decisions, each taken blind, and a
         single number at the very end.
         """
-        self.set_header("The Reward Comes Last")
+        self.set_header("The Reward (Often) Comes Last")
 
         box, rendered = self.transcript
 
@@ -432,7 +512,7 @@ class Part1Agents(LATSScene):
             for row, dot in zip(rendered, dots)
         ], lag_ratio=0.16), run_time=1.5)
         self.play(Create(links), run_time=T_NORM)
-        self.wait(1.2)
+        self.wait(5.4)
 
         marks = VGroup(*[
             txt("?", size=40, color=ACCENT, weight=BOLD).move_to([x, 1.35, 0])
@@ -440,7 +520,7 @@ class Part1Agents(LATSScene):
         ])
         self.play(LaggedStart(*[FadeIn(m, shift=DOWN * 0.18) for m in marks],
                               lag_ratio=0.18), run_time=1.4)
-        self.wait(4.4)
+        self.wait(8.4)
 
         terminal = Circle(radius=0.34, stroke_color=ACCENT, stroke_width=4,
                           fill_color=ACCENT, fill_opacity=0.22)
@@ -452,7 +532,14 @@ class Part1Agents(LATSScene):
 
         self.play(Create(last_link), GrowFromCenter(terminal), run_time=T_NORM)
         self.play(FadeIn(score, shift=UP * 0.2), run_time=T_NORM)
-        self.wait(6.6)
+        self.wait(3.6)
+
+        blind = txt("Sparse, terminal reward  →  credit assignment across the "
+                    "whole trajectory", size=FS_SMALL, color=INK_FAINT)
+        cap_width(blind, 11.6)
+        blind.move_to([0, -2.35, 0])
+        self.play(FadeIn(blind, shift=UP * 0.15), run_time=T_NORM)
+        self.wait(8.6)
 
         self.clear_body(run_time=T_NORM)
         self.drop_header()

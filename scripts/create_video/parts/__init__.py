@@ -6,6 +6,7 @@ the results.
 
 The narration lives here too, in a ``NARRATION`` dict at the top of each
 module, keyed by beat method name - so the words and the picture they describe
-sit in the same file. ``create_video.script`` turns those dicts plus a render's
-measured timings into ``SCRIPT.txt``.
+sit in the same file. A second dict, ``ON_SCREEN``, describes what the frame shows for each beat.
+``create_video.script`` turns those two dicts plus a render's measured timings
+into ``SCRIPT.md``.
 """

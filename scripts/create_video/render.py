@@ -16,6 +16,7 @@ import sys
 import time
 from pathlib import Path
 
+from .fontpath import status as font_status
 from .paths import MANIM_CACHE, REPO_ROOT, RUN_DIR_ENV
 from .texpath import latex_status
 
@@ -27,9 +28,8 @@ PARTS: list[tuple[int, str, str]] = [
     (2, "part2_linear", "Part2Linear"),
     (3, "part3_mcts", "Part3MCTS"),
     (4, "part4_lats", "Part4LATS"),
-    (5, "part5_math", "Part5Math"),
-    (6, "part6_walkthrough", "Part6Walkthrough"),
-    (7, "part7_frontier", "Part7Frontier"),
+    (5, "part5_walkthrough", "Part5Walkthrough"),
+    (6, "part6_frontier", "Part6Frontier"),
 ]
 
 PART_NUMBERS = [p for p, _, _ in PARTS]
@@ -181,5 +181,11 @@ def check() -> int:
         print("  manim    NOT INSTALLED  (pip install -r requirements.txt)")
     print(f"  ffmpeg   {shutil.which('ffmpeg') or 'NOT FOUND'}")
     print(f"  latex    {latex_status()}")
+    print(f"  fonts    {font_status()}")
+    try:
+        from .theme import FONT, FONT_MONO
+        print(f"  faces    body {FONT!r}   mono {FONT_MONO!r}")
+    except Exception as exc:  # pragma: no cover - needs manim installed
+        print(f"  faces    could not resolve ({exc})")
     print(f"\n  cache    {MANIM_CACHE}")
     return 0

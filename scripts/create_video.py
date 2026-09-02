@@ -5,27 +5,29 @@ Render the LATS explainer video.
     python scripts/create_video.py                  # draft (854x480, 15 fps), for iterating
     python scripts/create_video.py --quality final  # delivery (1920x1080, 30 fps)
     python scripts/create_video.py --parts 3 5      # re-render two parts, then re-join
-    python scripts/create_video.py --join-only      # rebuild full.mp4 and SCRIPT.txt only
-    python scripts/create_video.py --script-only    # rewrite SCRIPT.txt against the last render
+    python scripts/create_video.py --join-only      # rebuild full.mp4 and SCRIPT.md only
+    python scripts/create_video.py --script-only    # rewrite SCRIPT.md against the last render
     python scripts/create_video.py --timing         # narration length vs. time on screen
     python scripts/create_video.py --check          # report the toolchain and exit
 
 Every render gets its own timestamped directory under ``results/video/``::
 
     results/video/20260830-010025/
-        partial_part1.mp4 ... partial_part7.mp4   one file per section
-        full.mp4                                  all seven, concatenated
+        partial_part1.mp4 ... partial_part6.mp4   one file per section
+        full.mp4                                  all six, concatenated
         timing.json                               per-beat timings
-        SCRIPT.txt                                narration, cued to those timings
+        SCRIPT.md                                 narration, cued to those timings
         render.json                               which quality preset produced this
 
-The video carries no sound. ``SCRIPT.txt`` is written from the ``NARRATION``
-dicts in the part modules and the timings this render measured, so it always
-describes the mp4 sitting beside it.
+The video carries no sound. ``SCRIPT.md`` is written from the ``NARRATION`` and
+``ON_SCREEN`` dicts in the part modules and the timings this render measured, so
+it always describes the mp4 sitting beside it. A copy lands at
+``results/SCRIPT.md`` too, so the current script is one predictable path rather
+than one inside whichever timestamped run happens to be newest.
 
 ``--parts``, ``--join-only`` and ``--script-only`` continue the most recent run
 instead of starting a new one, so re-rendering one section does not orphan the
-other six. ``--run-dir`` picks a different one.
+other five. ``--run-dir`` picks a different one.
 """
 
 from __future__ import annotations
@@ -43,7 +45,7 @@ if str(SCRIPTS) not in sys.path:
 
 from create_video import render, script, timing  # noqa: E402
 from create_video.paths import (  # noqa: E402
-    VIDEO_RESULTS, latest_run_dir, new_run_dir,
+    RESULTS, VIDEO_RESULTS, latest_run_dir, new_run_dir,
 )
 
 
@@ -92,12 +94,17 @@ def check_quality(run: Path, quality: str, continuing: bool) -> None:
 
 
 def write_script(run: Path) -> None:
-    """Rewrite SCRIPT.txt, if this run has measured timings to cue it against."""
+    """Rewrite SCRIPT.md, if this run has measured timings to cue it against."""
     if not (run / "timing.json").exists():
-        print("  no timing.json yet, so no SCRIPT.txt - render the parts first.")
+        print("  no timing.json yet, so no SCRIPT.md - render the parts first.")
         return
     target = script.write(run)
-    print(f"\nSCRIPT.txt  {target}")
+    # A stable path for the current script, beside the runs it came from, so
+    # nothing has to work out which timestamped folder is the newest.
+    latest = RESULTS / "SCRIPT.md"
+    latest.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+    print(f"\nSCRIPT.md   {target}")
+    print(f"            {latest}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -111,11 +118,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--run-dir", metavar="PATH",
                     help="use this run directory instead of the latest")
     ap.add_argument("--join-only", action="store_true",
-                    help="skip rendering; rebuild full.mp4 and SCRIPT.txt")
+                    help="skip rendering; rebuild full.mp4 and SCRIPT.md")
     ap.add_argument("--no-join", action="store_true",
                     help="render the parts but do not build full.mp4")
     ap.add_argument("--script-only", action="store_true",
-                    help="rewrite SCRIPT.txt from the last render's timings")
+                    help="rewrite SCRIPT.md from the last render's timings")
     ap.add_argument("--timing", action="store_true",
                     help="report narration length against time on screen")
     ap.add_argument("--cache", action="store_true",

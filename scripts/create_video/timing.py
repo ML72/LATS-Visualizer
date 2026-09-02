@@ -7,7 +7,7 @@ directory with the measured span of each beat. This module puts the two side by
 side so you can see which beats need a longer hold and which are dawdling::
 
     python scripts/create_video.py --timing         # the latest render
-    python scripts/create_video.py --timing 3 5     # just parts 3 and 5
+    python scripts/create_video.py --timing 3 4     # just parts 3 and 4
 
 Reading the output
 ------------------
@@ -43,9 +43,8 @@ PART_MODULES = {
     2: "create_video.parts.part2_linear",
     3: "create_video.parts.part3_mcts",
     4: "create_video.parts.part4_lats",
-    5: "create_video.parts.part5_math",
-    6: "create_video.parts.part6_walkthrough",
-    7: "create_video.parts.part7_frontier",
+    5: "create_video.parts.part5_walkthrough",
+    6: "create_video.parts.part6_frontier",
 }
 
 

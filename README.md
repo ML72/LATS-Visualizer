@@ -13,7 +13,7 @@ the algorithm the trace is a recording of.
 |---|---|---|
 | **the web app** (repository root) | a viewer that steps through a trace: the tree grows as the search grew, and a panel shows the arithmetic behind each operation | ~10 min, click |
 | **`scripts/run_lats.py`** | a from-scratch LATS implementation searching four real environments, offline or against a real model | ~45 min, read and modify |
-| **`scripts/create_video.py`** | a 16½-minute Manim explainer in seven parts, rendered from source, with a narration script generated to match it | ~16 min, watch |
+| **`scripts/create_video.py`** | an 18-minute Manim explainer in six parts, rendered from source, with a narration script generated to match it | ~18 min, watch |
 
 > **The default path runs offline with no API key.** The default policy is a
 > seeded stand-in, so the same command always writes the same trace, byte for
@@ -49,7 +49,8 @@ anything; `requirements.txt` is what the video and the real-model backends
 need.
 
 Rendering the video additionally needs **ffmpeg** and a **LaTeX** distribution
-on `PATH`. `python scripts/create_video.py --check` reports what it can find.
+on `PATH`. Fonts need nothing installed - they ship in the repository.
+`python scripts/create_video.py --check` reports what it can find.
 
 ---
 
@@ -74,15 +75,17 @@ on `PATH`. `python scripts/create_video.py --check` reports what it can find.
 │   │   ├── trace.py          the trace format and its writer
 │   │   ├── env.py            reads .env, so a key need not be exported
 │   │   └── tasks/            the four environments, and a subprocess runner
-│   ├── create_video.py       CLI: render the video, write SCRIPT.txt
+│   ├── create_video.py       CLI: render the video, write SCRIPT.md
 │   └── create_video/         Manim source
 │       ├── paths.py          where a render reads and writes
 │       ├── theme.py          palette, type scale, layout grid, motion
 │       ├── components.py     the animated search tree, panels, icons
 │       ├── render.py         the Manim and ffmpeg mechanics
 │       ├── timing.py         narration length against time on screen
-│       ├── script.py         writes SCRIPT.txt from the narration and timings
-│       └── parts/            one module per section, narration included
+│       ├── script.py         writes SCRIPT.md from the narration and timings
+│       ├── fontpath.py       registers the bundled fonts with Pango
+│       ├── fonts/            Inter and JetBrains Mono, used by every render
+│       └── parts/            six modules, one per section, narration included
 ├── results/                  everything generated — gitignored
 │   ├── lats-traces/<stamp>/  one directory per search run
 │   └── video/<stamp>/        one directory per render
@@ -140,7 +143,7 @@ python scripts/run_lats.py --task game-of-24_hard --llm openai --publish \
 |---|---|---|
 | `--n` | samples per expansion | 5 |
 | `--w` | exploration weight in UCT | 1 |
-| `--lambda` | weight on the model's self-evaluation, against self-consistency | 0.5 (HotPotQA, Game of 24) · 0.8 (programming, WebShop) |
+| `--lambda` | weight on the model's self-evaluation, against self-consistency | 0.5 (HotpotQA, Game of 24) · 0.8 (programming, WebShop) |
 | `--iterations` | search iterations | 30–50 trajectories |
 | `--max-depth` | hard depth limit | 6–7 |
 | `--seed` | seed for the offline policy | — |
@@ -232,7 +235,7 @@ three (−0.05 exact match against −0.26 for the value function and −0.21 fo
 search).
 
 **Which term dominates is a property of the task, not a law.** On Game of 24 the
-ordering is *reversed* from the paper's HotPotQA result. Removing exploration
+ordering is *reversed* from the paper's HotpotQA result. Removing exploration
 (`w = 0`) breaks the search outright. Removing the model's self-evaluation
 (`λ = 0`) leaves a search that still reaches a solution but can no longer
 recognise one: it builds the winning node and walks past it, and spends every
@@ -376,24 +379,28 @@ nothing: `NodeDetail.tsx` formats keys it does not recognise as JSON.
 python scripts/create_video.py                  # draft (854x480), for iterating
 python scripts/create_video.py --quality final  # delivery (1920x1080, 30 fps)
 python scripts/create_video.py --parts 3 5      # re-render two parts, then re-join
-python scripts/create_video.py --script-only    # rewrite SCRIPT.txt only
+python scripts/create_video.py --script-only    # rewrite SCRIPT.md only
 python scripts/create_video.py --timing         # narration length vs. screen time
 python scripts/create_video.py --check          # report the toolchain
 ```
 
 | part | title | starts | runtime |
 |---|---|---|---|
-| 1 | Agents, States, and Rewards | 0:00 | 2:17 |
-| 2 | Why a Straight Line Fails | 2:17 | 1:48 |
-| 3 | Monte Carlo Tree Search | 4:06 | 2:18 |
-| 4 | LATS: Tree Search for Language Agents | 6:25 | 1:53 |
-| 5 | The Math, and the Intuition | 8:19 | 3:25 |
-| 6 | LATS in Action | 11:44 | 2:11 |
-| 7 | Does It Work, and Where Is It Going | 13:55 | 2:32 |
+| 1 | Agents, States, and Rewards | 0:00 | 3:06 |
+| 2 | Motivation for Tree Search | 3:06 | 2:12 |
+| 3 | Monte Carlo Tree Search | 5:19 | 2:59 |
+| 4 | Language Agent Tree Search | 8:18 | 4:45 |
+| 5 | LATS in Action | 13:03 | 2:16 |
+| 6 | Does It Work, and Where Is It Going | 15:20 | 2:29 |
+
+Part 4 carries both halves of LATS: the substitution table that turns MCTS into
+a language-agent algorithm, and then the three equations behind selection,
+evaluation and backpropagation — plus reflection, the one operation with no
+equation at all.
 
 A single worked example — writing `merge_intervals` against a visible test suite
-— is introduced in Part 1 and searched end to end in Part 6. At `final` quality
-the delivered `full.mp4` is 1920x1080 H.264, about 25 MB, which is under the
+— is introduced in Part 1 and searched end to end in Part 5. At `final` quality
+the delivered `full.mp4` is 1920x1080 H.264, about 27 MB, which is under the
 ~40 MB above which the call for submissions asks for external hosting.
 
 > **Before submitting:** set `AUTHORS` at the top of
@@ -405,23 +412,25 @@ Every render gets its own timestamped directory under `results/video/`:
 
 ```
 results/video/20260830-010025/
-    partial_part1.mp4 … partial_part7.mp4   one file per section
-    full.mp4                                all seven, concatenated
+    partial_part1.mp4 … partial_part6.mp4   one file per section
+    full.mp4                                all six, concatenated
     timing.json                             per-beat timings
-    SCRIPT.txt                              the narration, cued to those timings
+    SCRIPT.md                               the narration, cued to those timings
     render.json                             which quality preset produced this
 ```
 
 **The video carries no sound.** The narration lives in a `NARRATION` dict at the
-top of each part module, next to the animation it describes, and
-`SCRIPT.txt` is generated from those dicts plus the timings the render actually
-measured — so the script always describes the mp4 sitting beside it. `--timing`
-compares the two, beat by beat, and flags anything where the words and the
-picture have drifted apart.
+top of each part module, next to the animation it describes, with an `ON_SCREEN`
+dict beside it describing what the frame shows. `SCRIPT.md` is generated from
+those two dicts plus the timings the render actually measured — so the script
+always describes the mp4 sitting beside it, and a copy lands at
+`results/SCRIPT.md` so the current script is one predictable path. `--timing`
+compares words against screen time, beat by beat, and flags anything where the
+two have drifted apart.
 
 `--parts`, `--join-only` and `--script-only` continue the most recent run rather
 than starting a new one, so re-rendering one section does not orphan the other
-six; `--run-dir` picks a different one. Adding a part at a quality the run was
+five; `--run-dir` picks a different one. Adding a part at a quality the run was
 not rendered at is warned about rather than silently joined.
 
 Manim's scratch tree lives in `results/video/.manim_cache/` and is shared across
@@ -432,6 +441,25 @@ cold render, and that cache is keyed by content.
 > a virtualenv sees, which makes every equation fail. `create_video/texpath.py`
 > finds it and prepends it automatically; set `LATS_TEX_BIN` to override the
 > search.
+
+**The type is bundled, not installed.** `create_video/fonts/` holds Inter for
+body text and JetBrains Mono for code, and `create_video/fontpath.py` registers
+them with Pango on import - privately, for the rendering process only, so
+nothing is written to the system font directory. Every entry point picks them up
+because they are registered before `theme.py` resolves a face, and `--check`
+prints which faces a render will actually use:
+
+```
+  fonts    OK   Inter, JetBrains Mono  from …/create_video/fonts
+  faces    body 'Inter'   mono 'JetBrains Mono'
+```
+
+Without that the render falls back to whatever the machine has installed, which
+is both machine-dependent and visibly worse - so if `--check` reports a face you
+did not expect, the files have gone missing rather than the render being fine.
+Registered fonts make Pango's font enumeration much slower, and Manim calls it
+once per `Text`, so `fontpath.py` also memoises `manimpango.list_fonts`; without
+that a render does not finish in reasonable time.
 
 ---
 
@@ -509,7 +537,7 @@ under it are estimates, flagged with `tokens_are_estimated`.
 
 **Honesty notes for teaching.** The QA reward is an oracle — a stored gold
 string, not something the environment can determine. The paper uses the same
-oracle signal on HotPotQA, as do the ReAct and Reflexion baselines it is
+oracle signal on HotpotQA, as do the ReAct and Reflexion baselines it is
 compared against, but it is a real caveat. And `tasks/sandbox.py` bounds
 runtime; it does not contain hostile code.
 

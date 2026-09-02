@@ -1,5 +1,5 @@
 """
-Part 6 - LATS in action.
+Part 5 - LATS in action.
 
 One task, worked end to end: write ``merge_intervals`` against a visible test
 suite. The trap is deliberate. The obvious one-pass solution is genuinely
@@ -13,7 +13,7 @@ backwards.
 The UCT numbers shown on screen are computed from the formula at render time
 (see :func:`_uct`), so editing the values keeps the arithmetic honest.
 
-Render:  manim -qh scripts/create_video/parts/part6_walkthrough.py Part6Walkthrough
+Render:  manim -qh scripts/create_video/parts/part5_walkthrough.py Part5Walkthrough
 """
 
 import sys
@@ -49,14 +49,16 @@ NARRATION = {
         "how LATS handles programming tasks.",
     ],
     "beat_iter1": [
-        "Expansion. The model writes three candidate approaches from the root.",
+        "Expansion. The model samples three candidate approaches from the "
+        "root.",
         "Evaluation. It grades its own three ideas. Merging neighbors in one "
         "pass looks best - and honestly, it is a reasonable guess.",
-        "Selection takes it, and simulation runs it for real. Three of five. "
+        "Selection takes it, and simulation runs it for real: three of five. "
         "The two unsorted tests fail.",
-        "Backpropagation writes that zero point six back into the node and up "
-        "to the root. The model's own optimistic guess of zero point seven has "
-        "just been overruled by the test runner.",
+        "Backpropagation writes that zero point six into the node and up to "
+        "the root. The model's own optimistic zero point seven has just been "
+        "overruled by the test runner - which is why the value estimate has "
+        "to be grounded in the environment.",
     ],
     "beat_reflect": [
         "And because that trajectory failed, reflection fires. The model reads "
@@ -64,20 +66,43 @@ NARRATION = {
         "This note is now part of the context for everything that follows.",
     ],
     "beat_iter2": [
-        "Selection again - and this time the numbers have moved. The branch we "
-        "tried is worth less than we thought, and the branch we have never "
-        "touched carries a full exploration bonus. Sort first and sweep wins.",
+        "Selection again, and the numbers have moved. A is worth zero point "
+        "six over two visits; B still carries the model's zero point six two "
+        "over one. B's exploration bonus is the square root of log two, about "
+        "zero point eight three - enough to win.",
         "Expansion, and the new solution differs from the failed one by exactly "
         "one line. Simulation: five out of five. Reward one. Search over.",
     ],
     "beat_counterfactual": [
         "So what would a linear agent have done here? It would have kept "
-        "patching. Handle this input, special-case that one - and stayed at "
+        "patching: handle this input, special-case that one - and stayed at "
         "three of five, because the approach itself was the bug.",
         "LATS did not out-think it. It went back up one level and spent its "
-        "next sample somewhere else. It was not smarter; it was just able "
-        "to go back.",
+        "next sample somewhere else. Not smarter; just able to go back.",
     ],
+}
+
+ON_SCREEN = {
+    "beat_section": "Section card - 5 / LATS in Action.",
+    "beat_task": "The signature, then all five test assertions. A brace marks "
+                 "the first three Sorted input and the last two Unsorted "
+                 "input. Then r = fraction of tests that pass.",
+    "beat_iter1": "Three children are expanded from the root and listed; each "
+                  "gets a value - A 0.70, B 0.62, C 0.35. A is selected and "
+                  "its code runs against the suite: three ticks, two crosses, "
+                  "r = 0.60. Then 0.60 flashes back into A and the root.",
+    "beat_reflect": "The reflection the model wrote, in a violet bubble, then "
+                    "an arrow down to Added to the context of every later "
+                    "attempt.",
+    "beat_iter2": "A table of Child, V, N and UCT - A is 0.60 with two "
+                  "visits, B is 0.62 with one - and B wins on UCT. Then the "
+                  "new code, with the added sorted() line highlighted and "
+                  "captioned One line different. Five ticks, r = 1.00, and a "
+                  "green Solved node.",
+    "beat_counterfactual": "Two runs side by side. The linear agent patches, "
+                           "patches, and gives up; LATS goes back to the root "
+                           "and solves it. A green curved arrow marks the "
+                           "backward move, and the linear run dims away.",
 }
 
 #: (key, label, one-line description, the model's own value estimate).
@@ -115,10 +140,10 @@ def _uct(value: float, visits: int, parent_visits: int, w: float = 1.0) -> float
     return value + w * sqrt(log(parent_visits) / visits)
 
 
-class Part6Walkthrough(LATSScene):
+class Part5Walkthrough(LATSScene):
     """One task, searched end to end, then compared against a linear agent."""
 
-    PART = 6
+    PART = 5
     TITLE = "LATS in Action"
 
     #: Where the tree lives, and where the side panel lives.
@@ -156,7 +181,7 @@ class Part6Walkthrough(LATSScene):
     # -- 1. Section card ----------------------------------------------------
 
     def beat_section(self):
-        card = section_card(6, "LATS in Action", "One task, start to finish")
+        card = section_card(5, "LATS in Action", "One task, start to finish")
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in card],
                               lag_ratio=0.18), run_time=T_NORM)
         self.wait(5.0)
@@ -264,7 +289,7 @@ class Part6Walkthrough(LATSScene):
                   run_time=1.1)
         for key, _, value in CANDIDATES:
             self.play(tree.set_value(key, value), run_time=0.3)
-        self.wait(6.4)
+        self.wait(7.4)
 
         # Selection and simulation.
         self.play(Transform(step, chip("Selection", PRIMARY, size=FS_SMALL)
@@ -307,7 +332,7 @@ class Part6Walkthrough(LATSScene):
             self.play(tree.set_value(key, value),
                       Flash(tree.pos(key), color=GOOD, line_length=0.18,
                             flash_radius=0.5), run_time=0.65)
-        self.wait(5.6)
+        self.wait(8.1)
 
         self.play(FadeOut(VGroup(run_tag, code, marks, label, score, back,
                                  listing[0], scores[0],
@@ -386,7 +411,7 @@ class Part6Walkthrough(LATSScene):
                                     corner_radius=0.12, stroke_width=3)
         self.play(Create(ring), *tree.highlight_path(["root", "B"]),
                   run_time=T_NORM)
-        self.wait(8.6)
+        self.wait(10.6)
 
         self.play(FadeOut(VGroup(header, rows, ring)), run_time=T_NORM)
 

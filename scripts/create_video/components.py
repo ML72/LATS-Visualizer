@@ -1,7 +1,7 @@
 """
 Reusable Mobjects and scene scaffolding for the LATS explainer video.
 
-Nothing here is specific to a single part of the video; each of the seven parts
+Nothing here is specific to a single part of the video; each of the six parts
 in ``create_video/parts/`` composes these pieces. Two things matter most:
 
 ``LATSScene``
@@ -74,12 +74,12 @@ class LATSScene(Scene):
     ``LATS_BEATS`` environment variable to a comma-separated list of beat
     indices (0-based) or beat method names to render only those::
 
-        LATS_BEATS=2,3 manim -ql scripts/create_video/parts/part5_math.py Part5Math
+        LATS_BEATS=2,3 manim -ql scripts/create_video/parts/part4_lats.py Part4LATS
 
     A full render also writes ``timing_partN.json`` into the run directory
     (see :mod:`create_video.paths`), recording the wall-clock span of each
     beat. ``create_video.py`` folds those files into ``timing.json``, which is
-    what the timestamps in ``SCRIPT.txt`` are calibrated against. A
+    what the timestamps in ``SCRIPT.md`` are calibrated against. A
     ``LATS_BEATS`` render deliberately writes no timing file, so experimenting
     with one beat cannot corrupt the script.
     """
@@ -132,7 +132,7 @@ class LATSScene(Scene):
             return
         # A LATS_BEATS render covers only some of the part, so its timings are
         # not the part's timings. Writing them would silently corrupt
-        # SCRIPT.txt with a runtime measured over two beats out of six.
+        # SCRIPT.md with a runtime measured over two beats out of six.
         if getattr(self, "_partial", False):
             return
         out_dir = run_dir()
@@ -306,6 +306,20 @@ def code_block(lines, width: float | None = None, size: float = FS_MONO,
         for i, line in enumerate(lines)
     ])
     rendered.arrange(DOWN, aligned_edge=LEFT, buff=line_buff)
+
+    # Put the indentation back. A leading space carries no ink, so it is not in
+    # the line's bounding box, and ``aligned_edge=LEFT`` therefore lines every
+    # row up on its first visible glyph - which flattens a Python block flush
+    # left and shows code that would not run. Shifting by the measured
+    # character advance restores it; the face is monospaced, so one advance is
+    # the width of any glyph.
+    indents = [len(line) - len(line.lstrip(" ")) for line in lines]
+    if any(indents):
+        advance = mono("xx", size=size).width - mono("x", size=size).width
+        for row, indent in zip(rendered, indents):
+            if indent:
+                row.shift(RIGHT * indent * advance)
+
     if width is not None:
         cap_width(rendered, width)
     return rendered
@@ -472,12 +486,21 @@ def _format_value(v: float) -> str:
 
 def hbar_chart(rows, max_value: float, width: float = 6.4,
                bar_height: float = 0.34, gap: float = 0.24,
-               label_width: float = 3.1, size: float = FS_SMALL) -> VGroup:
+               label_width: float = 3.1, size: float = FS_SMALL,
+               track: bool = True) -> VGroup:
     """A horizontal bar chart.
 
     ``rows`` is a sequence of ``(label, value, colour)``. Returns a VGroup whose
     ``bars`` / ``labels`` / ``values`` attributes expose the pieces so a scene
     can animate them individually.
+
+    ``max_value`` is what a full-width bar means, so it has to be a number the
+    reader can name: the top of the metric's range (1.0 for a rate, 100 for a
+    percentage). Padding it to a round number above the data silently inflates
+    every bar. Where no such ceiling exists - token counts, say - pass
+    ``track=False`` and scale against the largest value in ``rows``; without a
+    track behind them the bars read as lengths to compare rather than as
+    fractions of something.
     """
     bars, labels, value_labels, tracks = VGroup(), VGroup(), VGroup(), VGroup()
     for i, (name, value, color) in enumerate(rows):
@@ -488,12 +511,13 @@ def hbar_chart(rows, max_value: float, width: float = 6.4,
         label.move_to([-label.width / 2 - 0.28, y, 0])
         labels.add(label)
 
-        track = RoundedRectangle(
-            corner_radius=bar_height / 2, width=width, height=bar_height,
-            stroke_width=0, fill_color=SURFACE_2, fill_opacity=1.0,
-        )
-        track.move_to([width / 2, y, 0])
-        tracks.add(track)
+        if track:
+            plate = RoundedRectangle(
+                corner_radius=bar_height / 2, width=width, height=bar_height,
+                stroke_width=0, fill_color=SURFACE_2, fill_opacity=1.0,
+            )
+            plate.move_to([width / 2, y, 0])
+            tracks.add(plate)
 
         length = max(width * value / max_value, bar_height)
         bar = RoundedRectangle(

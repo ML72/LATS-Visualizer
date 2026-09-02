@@ -1,5 +1,5 @@
 """
-Part 2 - Why a straight line fails.
+Part 2 - Motivation for tree search.
 
 Three failure modes of linear agents, in order:
 
@@ -26,45 +26,73 @@ from create_video.components import (  # noqa: E402
     LATSScene, SearchTree, chip, cross_mark, section_card, speech_bubble,
 )
 from create_video.theme import (  # noqa: E402
-    ACCENT, BAD, EDGE, FS_BODY, FS_H3, FS_SMALL, FS_TINY, GOOD, INK,
-    INK_DIM, INK_FAINT, PRIMARY, SURFACE_2, T_FAST, T_NORM, T_SLOW, TEAL,
-    VIOLET, cap_width, mathtex, txt, value_color,
+    ACCENT, BAD, EDGE, FS_SMALL, FS_TINY, GOOD, INK_DIM, INK_FAINT, PRIMARY,
+    SURFACE_2, T_FAST, T_NORM, T_SLOW, TEAL, VIOLET, mathtex, txt,
+    value_color,
 )
 
 NARRATION = {
     "beat_section": [
-        "So how does a normal agent choose? Usually, it just walks forwards.",
+        "So how does a normal language agent choose? Almost always, it just "
+        "walks forwards.",
     ],
     "beat_react": [
-        "This is the ReAct pattern, and it is what almost every agent "
-        "framework does. Think, act, observe, repeat, in one straight line.",
-        "Our agent reads the spec, writes a one-pass merge, runs the tests, "
-        "and gets three out of five. It patches the edge case it can see, and "
-        "gets three out of five again.",
-        "It is stuck, and it would like to go back to that second step and "
-        "try something else. A ReAct agent has no way to do that.",
+        "This is the ReAct pattern - Yao and colleagues, 2023 - and it is "
+        "what almost every agent framework does. Interleave reasoning and "
+        "acting: think, act, observe, repeat, in one straight line.",
+        "Our agent reads the spec, writes a one-pass merge, runs the tests: "
+        "three out of five. It patches the edge case it can see, and gets "
+        "three out of five again.",
+        "It is stuck. What it wants is to go back to that second decision "
+        "and try something else. A ReAct agent has no operation for that: the "
+        "transcript is append-only, so the policy always conditions on a "
+        "history that can only grow.",
     ],
     "beat_forks": [
         "Rewind to that second step. The model did not have one idea; it had "
-        "several. Sort first and sweep. Use an interval tree. Merge "
-        "neighbors in one pass.",
-        "It sampled one of them, and the other two were never written down. "
-        "They are not ranked lower. They simply do not exist any more.",
+        "a distribution over them. Sort first and sweep. Build an interval "
+        "tree. Merge neighbors in one pass.",
+        "It drew a single sample from that distribution. The other two were "
+        "never written down - not ranked lower, never scored at all. They "
+        "simply do not exist any more.",
     ],
     "beat_reflexion": [
-        "There is a well-known fix for this, called Reflexion. When a "
-        "trajectory fails, the agent writes itself a reflection about why it "
-        "failed, and tries the whole task again with that note in context.",
-        "It genuinely helps. But look at what it costs. Every attempt starts "
-        "from an empty transcript, so the first three steps - which were "
-        "perfectly good - get re-derived, and re-paid for, every single time.",
+        "There is a well-known fix, called Reflexion - Shinn and colleagues, "
+        "2023. When a trajectory fails the agent writes itself a note about "
+        "why, keeps it in memory, and retries the whole task with that note "
+        "in context.",
+        "It genuinely helps. But every attempt restarts from an empty "
+        "transcript, so the first three steps - which were perfectly good - "
+        "are re-derived and re-paid for every time.",
+        "And the credit assignment is still trajectory-level. The reflection "
+        "knows the attempt failed; it does not know which step was at fault.",
     ],
     "beat_ask": [
-        "Which suggests what we actually want. Keep the steps that worked. "
-        "Branch only where the decision was, and choose which branch to spend "
-        "the next sample on.",
-        "That shape has a name. It is a tree.",
+        "Which tells us what we want. Keep the prefix that worked, branch "
+        "only where the decision was, and choose which branch to spend the "
+        "next sample on.",
+        "Nodes are states, edges are actions, and the prefix is shared "
+        "instead of repeated. That shape has a name.",
     ],
+}
+
+ON_SCREEN = {
+    "beat_section": "Section card - 2 / Motivation for Tree Search.",
+    "beat_react": "The ReAct chip, then a five-step chain builds left to "
+                  "right. The two 3 / 5 steps are boxed in red, a cross "
+                  "appears at the end, and a red curved arrow tries to reach "
+                  "back to step two and is broken.",
+    "beat_forks": "Everything after step two dims. Three candidate "
+                  "approaches appear as cards; the one actually taken is "
+                  "ringed and labelled Sampled, and the other two drop off "
+                  "the bottom of the frame.",
+    "beat_reflexion": "Attempt 1, then a violet reflection note, then "
+                      "attempts 2 and 3 stacked beneath it. The identical "
+                      "three-step prefix is boxed in all three rows, and a "
+                      "large x 3 appears.",
+    "beat_ask": "The three shared prefixes slide onto one another and merge "
+                "into a single path; the picture cross-dissolves into a "
+                "top-down tree captioned Tree.",
 }
 
 #: The linear trajectory, as (short label under the node, node value or None).
@@ -81,7 +109,7 @@ class Part2Linear(LATSScene):
     """Linear agents commit, discard alternatives, and repeat themselves."""
 
     PART = 2
-    TITLE = "Why a Straight Line Fails"
+    TITLE = "Motivation for Tree Search"
 
     def beats(self):
         return [
@@ -116,7 +144,8 @@ class Part2Linear(LATSScene):
                 captions.add(cap)
         links = VGroup(*[
             Arrow(nodes[i].get_right(), nodes[i + 1].get_left(), buff=0.1,
-                  stroke_width=3, color=EDGE, max_tip_length_to_length_ratio=0.14,
+                  stroke_width=3, color=EDGE,
+                  max_tip_length_to_length_ratio=0.14,
                   max_stroke_width_to_length_ratio=6)
             for i in range(len(nodes) - 1)
         ])
@@ -127,23 +156,23 @@ class Part2Linear(LATSScene):
     # -- 1. Section card ----------------------------------------------------
 
     def beat_section(self):
-        card = section_card(2, "Why a Straight Line Fails",
-                            "Commit, discard, repeat")
+        card = section_card(2, "Motivation for Tree Search",
+                            "Where does linear search fail?")
         self.play(LaggedStart(*[FadeIn(m, shift=UP * 0.2) for m in card],
                               lag_ratio=0.18), run_time=T_NORM)
-        self.wait(3.4)
+        self.wait(5.6)
         self.play(FadeOut(card), run_time=T_FAST)
 
     # -- 2. The linear agent walks into a wall ------------------------------
 
     def beat_react(self):
-        self.set_header("The Straight Line")
+        self.set_header("Basic Linear Search")
 
-        tag = chip("ReAct: think → act → observe → repeat", PRIMARY,
+        tag = chip("ReAct: Think → Act → Observe → Repeat", PRIMARY,
                    size=FS_SMALL)
         tag.move_to([0, 2.1, 0])
         self.play(FadeIn(tag, shift=DOWN * 0.2), run_time=T_NORM)
-        self.wait(5.4)
+        self.wait(8.4)
 
         chain = self._chain(TRAJECTORY, y=0.35)
         self.chain = chain
@@ -169,7 +198,7 @@ class Part2Linear(LATSScene):
         self.play(Create(repeat), Create(repeat2), run_time=T_NORM)
         self.wait(1.8)
         self.play(FadeIn(mark, scale=0.6), run_time=T_NORM)
-        self.wait(3.2)
+        self.wait(3.4)
 
         # It would like to go back to step two. It cannot: draw the move it
         # wants to make, then break it. No caption needed. The ReAct chip goes
@@ -187,9 +216,15 @@ class Part2Linear(LATSScene):
                         flash_radius=0.7), run_time=T_NORM)
         self.play(back.animate.set_stroke(opacity=0.25),
                   Wiggle(back, scale_value=1.02), run_time=T_NORM)
-        self.wait(4.6)
-        self.play(FadeOut(VGroup(mark, repeat, repeat2, back, blocked)),
-                  run_time=T_NORM)
+        self.wait(2.0)
+
+        append = txt("The transcript is append-only", size=FS_SMALL,
+                     color=INK_FAINT)
+        append.move_to([0, -2.5, 0])
+        self.play(FadeIn(append, shift=UP * 0.15), run_time=T_NORM)
+        self.wait(8.2)
+        self.play(FadeOut(VGroup(mark, repeat, repeat2, back, blocked,
+                                 append)), run_time=T_NORM)
 
     # -- 3. The alternatives that were never written down -------------------
 
@@ -204,14 +239,14 @@ class Part2Linear(LATSScene):
             run_time=T_NORM)
         self.play(Indicate(chain.nodes[1], color=ACCENT, scale_factor=1.25),
                   run_time=T_NORM)
-        self.wait(1.4)
+        self.wait(1.6)
 
         # Three candidate second steps, laid out in a row so they clear the
         # trajectory and its captions above.
         options = [
-            ("sort first,\nthen sweep", GOOD),
-            ("build an\ninterval tree", TEAL),
-            ("merge neighbors\nin one pass", PRIMARY),
+            ("Sort first,\nthen sweep", GOOD),
+            ("Build an\ninterval tree", TEAL),
+            ("Merge neighbors\nin one pass", PRIMARY),
         ]
         cards = VGroup()
         for label, color in options:
@@ -229,7 +264,7 @@ class Part2Linear(LATSScene):
 
         self.play(LaggedStart(*[FadeIn(c, shift=UP * 0.2) for c in cards],
                               lag_ratio=0.3), run_time=1.6)
-        self.wait(6.2)
+        self.wait(6.4)
 
         ring = SurroundingRectangle(taken, color=ACCENT, corner_radius=0.14,
                                     buff=0.1, stroke_width=3)
@@ -240,7 +275,7 @@ class Part2Linear(LATSScene):
 
         self.play(FadeOut(cards[0], shift=DOWN * 0.7),
                   FadeOut(cards[1], shift=DOWN * 0.7), run_time=T_SLOW)
-        self.wait(5.8)
+        self.wait(7.4)
 
         self.play(FadeOut(VGroup(chain, taken, ring, sampled)),
                   run_time=T_NORM)
@@ -262,14 +297,14 @@ class Part2Linear(LATSScene):
             rows.add(self._chain(prefix + suffix, y=y, x0=-5.3, dx=1.28,
                                  radius=0.24))
         labels = VGroup(*[
-            txt(f"attempt {i + 1}", size=FS_TINY, color=INK_FAINT)
+            txt(f"Attempt {i + 1}", size=FS_TINY, color=INK_FAINT)
             for i in range(3)
         ])
         for label, row in zip(labels, rows):
             label.next_to(row.nodes[0], LEFT, buff=0.34)
 
         self.play(FadeIn(rows[0]), FadeIn(labels[0]), run_time=T_NORM)
-        self.wait(1.6)
+        self.wait(1.8)
 
         method = chip("Reflexion  ·  Shinn et al., 2023", INK_FAINT,
                       size=FS_TINY)
@@ -283,7 +318,7 @@ class Part2Linear(LATSScene):
         self.play(FadeIn(method, shift=DOWN * 0.15), run_time=T_FAST)
         self.play(FadeIn(note, shift=LEFT * 0.25), FadeIn(note_tag),
                   run_time=T_NORM)
-        self.wait(5.6)
+        self.wait(7.4)
 
         for i in (1, 2):
             self.play(FadeIn(rows[i]), FadeIn(labels[i]), run_time=T_NORM)
@@ -302,16 +337,22 @@ class Part2Linear(LATSScene):
         cost = mathtex(r"\times\, 3", size=44, color=ACCENT)
         cost.move_to([-2.75, -2.5, 0])
         self.play(FadeIn(cost, shift=UP * 0.2), run_time=T_NORM)
-        self.wait(10.4)
+        self.wait(6.4)
 
-        self.play(FadeOut(VGroup(method, note, note_tag, cost, labels)),
-                  run_time=T_NORM)
+        grain = txt("Credit assignment stays trajectory-level",
+                    size=FS_SMALL, color=INK_FAINT)
+        grain.move_to([1.2, -2.5, 0])
+        self.play(FadeIn(grain, shift=UP * 0.15), run_time=T_NORM)
+        self.wait(7.0)
+
+        self.play(FadeOut(VGroup(method, note, note_tag, cost, grain,
+                                 labels)), run_time=T_NORM)
         self.rows, self.boxes = rows, boxes
 
     # -- 5. Merge the prefixes; you have built a tree -----------------------
 
     def beat_ask(self):
-        self.set_header("So: Keep the Paths")
+        self.set_header("Let's Keep the Shared Paths")
 
         rows, boxes = self.rows, self.boxes
 
@@ -331,10 +372,10 @@ class Part2Linear(LATSScene):
         self.play(FadeOut(VGroup(rows[1].nodes[:3], rows[1].links[:2],
                                  rows[2].nodes[:3], rows[2].links[:2])),
                   run_time=T_NORM)
-        self.wait(3.2)
+        self.wait(3.6)
 
         ltr = VGroup(rows)
-        self.wait(2.4)
+        self.wait(2.8)
 
         # Cross-dissolve into the top-down orientation used from here on.
         tree = SearchTree(origin=[0, 1.95, 0], slot_width=2.3, level_gap=1.2,
@@ -347,11 +388,15 @@ class Part2Linear(LATSScene):
                           kind="root" if parent is None else "normal")
         tree.place()
 
-        name = txt("A tree", size=44, color=ACCENT, weight=MEDIUM)
-        name.move_to([0, -3.0, 0])
+        name = txt("Tree", size=44, color=ACCENT, weight=MEDIUM)
+        name.move_to([0, -2.85, 0])
+        legend = txt("Nodes are states  ·  edges are actions", size=FS_SMALL,
+                     color=INK_FAINT)
+        legend.next_to(name, DOWN, buff=0.26)
         self.play(FadeOut(ltr), run_time=T_NORM)
         self.play(FadeIn(tree, shift=UP * 0.2), FadeIn(name, shift=UP * 0.2),
                   run_time=T_SLOW)
-        self.wait(4.2)
+        self.play(FadeIn(legend), run_time=T_FAST)
+        self.wait(7.5)
         self.clear_body(run_time=T_NORM)
         self.drop_header()

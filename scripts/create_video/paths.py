@@ -6,7 +6,7 @@ root, which is gitignored:
 
 ::
 
-    results/video/20260830-010025/    one render - the mp4s, the timings, SCRIPT.txt
+    results/video/20260830-010025/    one render - the mp4s, the timings, SCRIPT.md
     results/video/.manim_cache/       Manim's own output tree, shared by every render
 
 Manim renders each part in a separate process, so the run directory cannot
