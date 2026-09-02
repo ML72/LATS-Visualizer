@@ -340,8 +340,10 @@ is never the faint one on the screen.
   explained, so a forty-five node search stays readable from its first step
   instead of being drawn at the zoom its last step needs. Pan or zoom and the
   camera hands over; the crosshair gives it back, and the arrows button fits
-  the whole tree. Below the zoom at which a label is worth drawing, nodes
-  become value-coloured tiles and the tree reads as a shape.
+  the whole tree. Zooming out gives up detail one piece at a time — the full
+  card, then a name held at a fixed size on screen and truncated to what the
+  shrinking card can hold, then a bare value-coloured tile once even that will
+  not fit, so the tree reads as a shape. Nothing ever blanks all at once.
 - **Shows the arithmetic behind each operation.** Selection draws the UCT
   tug-of-war as stacked bars — exploitation against the exploration bonus —
   with a live `w` slider; drag it and the winning branch can flip. Evaluation

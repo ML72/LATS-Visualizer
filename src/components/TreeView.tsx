@@ -22,6 +22,11 @@
  * are the ones worth having on screen at a size you can read. The whole tree is
  * one button away, and the moment the user pans or zooms the camera stops
  * following until they ask it to resume.
+ *
+ * Zooming out past the point where a whole card is worth drawing, a node keeps
+ * its name at a fixed size on screen, truncated to fit, and only becomes a bare
+ * value-coloured tile once even that will not fit. Detail is given up one piece
+ * at a time; nothing about the tree ever blanks all at once.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -66,9 +71,18 @@ const MAX_SCALE = 1.2
     a step whose focus is a single node would fill the pane with it. */
 const MIN_FRAME_W = NODE_W * 4.5
 const MIN_FRAME_H = NODE_H * 5
-/** Below this scale a card's text is smaller than it is worth drawing, so a
-    node becomes a value-coloured tile and the tree reads as a shape. */
+/** Above this scale a node carries its whole card: name, V, N, id, reward. */
 const DETAIL_SCALE = 0.72
+/** Between the two, a node keeps only its name, held at a fixed size on screen
+    and truncated to whatever the card can still hold. Below the lower bound
+    even three characters will not fit, so the node becomes a value-coloured
+    tile and the tree reads as a shape instead. */
+const LABEL_SCALE = 0.26
+/** The on-screen size of that name, in pixels, whatever the zoom. */
+const LABEL_PX = 10
+/** Rough advance width of the sans face, as a fraction of its size. Used only
+    to decide how much of a name fits; being a little conservative is fine. */
+const CHAR_W = 0.56
 
 interface Props {
   trace: Trace
@@ -177,6 +191,10 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
   // Following by default; the user's own camera wins the moment there is one.
   const cam = free && camera ? camera : frame(subject)
   const detailed = cam.scale >= DETAIL_SCALE
+  const labelled = cam.scale >= LABEL_SCALE
+  // In user units, so the drawn size stays constant as the canvas scales.
+  const labelFont = LABEL_PX / cam.scale
+  const labelRoom = Math.floor((NODE_W - 14) / (labelFont * CHAR_W))
 
   const take = (next: Camera) => {
     setCamera(next)
@@ -320,9 +338,9 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                   width={NODE_W}
                   height={NODE_H}
                   rx={7}
-                  fill={alpha(color, detailed ? 0.13 : 0.82)}
+                  fill={alpha(color, labelled ? 0.13 : 0.82)}
                   stroke={
-                    isSelected ? INK : focused ? ACCENT : detailed ? color : alpha(color, 0.9)
+                    isSelected ? INK : focused ? ACCENT : solved ? GOOD : color
                   }
                   strokeWidth={isSelected ? 2.4 : focused ? 2.2 : 1.2}
                   vectorEffect="non-scaling-stroke"
@@ -382,10 +400,31 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                       </>
                     )}
                   </>
+                ) : labelled ? (
+                  <>
+                    <rect
+                      x={1}
+                      y={NODE_H - 4}
+                      width={Math.max(0, (NODE_W - 2) * Math.min(state.value, 1))}
+                      height={3}
+                      rx={1.5}
+                      fill={color}
+                    />
+                    <text
+                      x={NODE_W / 2}
+                      y={NODE_H / 2 + labelFont * 0.34}
+                      fill={INK}
+                      fontSize={labelFont}
+                      fontWeight={600}
+                      textAnchor="middle"
+                    >
+                      {truncate(node.label, Math.max(3, labelRoom))}
+                    </text>
+                  </>
                 ) : (
-                  // Zoomed out, a node is one value-coloured tile. A trajectory
-                  // that solved the task keeps a mark of its own, because that
-                  // is the thing worth finding in an overview.
+                  // Smaller than a name will fit: a node is one value-coloured
+                  // tile. A trajectory that solved the task keeps a mark of its
+                  // own, because that is the thing worth finding in an overview.
                   solved && (
                     <circle
                       cx={NODE_W / 2}
@@ -400,7 +439,7 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                 )}
 
                 {state.reflected && (
-                  <circle cx={6} cy={6} r={detailed ? 3.2 : 6} fill={VIOLET}>
+                  <circle cx={6} cy={6} r={detailed ? 3.2 : 3.2 / cam.scale} fill={VIOLET}>
                     <title>A reflection was written from this node</title>
                   </circle>
                 )}
@@ -472,11 +511,8 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
             {view.visible.length}/{trace.nodes.length}
           </Box>{' '}
           nodes ·{' '}
-          {free
-            ? 'drag to pan, scroll to zoom'
-            : detailed
-              ? 'the view follows the search'
-              : 'too many at this zoom to label — click one for detail'}
+          {free ? 'drag to pan, scroll to zoom' : 'the view follows the search'}
+          {!detailed && ' · click a node for its detail'}
         </Typography>
       </Box>
 
