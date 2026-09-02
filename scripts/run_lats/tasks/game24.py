@@ -138,7 +138,7 @@ def tidiness(result: Fraction, remaining: list[Fraction]) -> float:
 class Game24Task(Task):
     """Reach 24 from four numbers, using each exactly once."""
 
-    id = "game_of_24"
+    id = "game-of-24"
     family = "game"
     title = "Game of 24"
     reward_desc = "1 if the final value is exactly 24 and every number was used once, else 0"
@@ -357,7 +357,7 @@ class Game24HardTask(Game24Task):
     recall instead of searching, which teaches nothing.
     """
 
-    id = "game_of_24_hard"
+    id = "game-of-24_hard"
     title = "Game of 24, the hard one"
 
     #: Twelve dead ends ahead of the first move that works, and five routes in.

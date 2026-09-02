@@ -13,7 +13,7 @@ against a real environment and to record what it did.
     from run_lats import LATS, Config, TASKS
     from run_lats.llm import MockLLM
 
-    task = TASKS["game_of_24"]()
+    task = TASKS["game-of-24"]()
     search = LATS(task, Config(**task.defaults()), MockLLM(seed=7))
     print(search.run())
 

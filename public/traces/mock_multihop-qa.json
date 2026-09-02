@@ -1,14 +1,14 @@
 {
   "schema": "lats-trace/1",
-  "name": "openai_multihop_qa",
+  "name": "mock_multihop-qa",
   "generated_by": {
     "package": "run_lats",
     "version": "1.0.0"
   },
   "task": {
-    "id": "multihop_qa",
+    "id": "multihop-qa",
     "family": "qa",
-    "title": "Two-hop question answering with a retrieval tool",
+    "title": "Two-hop question answering",
     "prompt": "LATS adapts an existing tree search algorithm. At which venue, and in which year, was the paper that introduced that algorithm presented?",
     "reward": "1 if the answer names the gold venue and year, else 0 (an oracle signal)",
     "context": {
@@ -41,14 +41,13 @@
     "seed": 7
   },
   "policy": {
-    "kind": "openai",
-    "name": "OpenAI (gpt-5)",
-    "model": "gpt-5",
-    "effort": "low",
-    "seed": null,
-    "calls": 4,
-    "tokens": 3224,
-    "tokens_are_estimated": false
+    "kind": "mock",
+    "name": "MockLLM",
+    "model": null,
+    "seed": 7,
+    "calls": 5,
+    "tokens": 1113,
+    "tokens_are_estimated": true
   },
   "result": {
     "solved": true,
@@ -59,11 +58,11 @@
       2,
       12
     ],
-    "nodes": 13,
+    "nodes": 14,
     "iterations_run": 2,
     "stopped_because": "a trajectory reached the target reward",
     "reflections": [
-      "European Conference on Machine Learning (ECML), 2006 is not the gold answer. | finish:European Conference on Machine Learning (ECML), 2006"
+      "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer."
     ]
   },
   "nodes": [
@@ -82,12 +81,12 @@
       "id": 1,
       "parent": 0,
       "depth": 1,
-      "label": "search[LATS Language Agent Tree Search a",
-      "action": "search[LATS Language Agent Tree Search adapts algorithm venue year]",
-      "observation": "Language Agent Tree Search: Language Agent Tree Search, or LATS, was presented at ICML in 2024 by Zhou, Yan, Shlapentokh-Rothman, Wang and Wang. It adapts Monte Carlo Tree Search to language agents, adding a language model value function, real environment feedback, and a reflection step.",
+      "label": "search[UCT]",
+      "action": "search[UCT]",
+      "observation": "UCT: UCT is the selection rule most Monte Carlo Tree Search implementations use. Kocsis and Szepesvari derived it from the UCB1 bandit algorithm and presented it at ECML in 2006.",
       "detail": {
-        "query": "LATS Language Agent Tree Search adapts algorithm venue year",
-        "document": "Language Agent Tree Search"
+        "query": "UCT",
+        "document": "UCT"
       },
       "terminal": false,
       "created_at": 2
@@ -96,12 +95,12 @@
       "id": 2,
       "parent": 0,
       "depth": 1,
-      "label": "search[\"Language Agent Tree Search\" pape",
-      "action": "search[\"Language Agent Tree Search\" paper]",
-      "observation": "Language Agent Tree Search: Language Agent Tree Search, or LATS, was presented at ICML in 2024 by Zhou, Yan, Shlapentokh-Rothman, Wang and Wang. It adapts Monte Carlo Tree Search to language agents, adding a language model value function, real environment feedback, and a reflection step.",
+      "label": "search[Monte Carlo Tree Search]",
+      "action": "search[Monte Carlo Tree Search]",
+      "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
       "detail": {
-        "query": "\"Language Agent Tree Search\" paper",
-        "document": "Language Agent Tree Search"
+        "query": "Monte Carlo Tree Search",
+        "document": "Monte Carlo Tree Search"
       },
       "terminal": false,
       "created_at": 2
@@ -110,12 +109,12 @@
       "id": 3,
       "parent": 0,
       "depth": 1,
-      "label": "search[UCT algorithm introduced venue ye",
-      "action": "search[UCT algorithm introduced venue year ECML 2006]",
-      "observation": "UCT: UCT is the selection rule most Monte Carlo Tree Search implementations use. Kocsis and Szepesvari derived it from the UCB1 bandit algorithm and presented it at ECML in 2006.",
+      "label": "search[Reflexion]",
+      "action": "search[Reflexion]",
+      "observation": "Reflexion: Reflexion turns a failed attempt into a written note that is placed in the next prompt. Shinn and colleagues presented it at NeurIPS in 2023. It reflects, but it does not search.",
       "detail": {
-        "query": "UCT algorithm introduced venue year ECML 2006",
-        "document": "UCT"
+        "query": "Reflexion",
+        "document": "Reflexion"
       },
       "terminal": false,
       "created_at": 2
@@ -124,11 +123,11 @@
       "id": 4,
       "parent": 1,
       "depth": 2,
-      "label": "search[Monte Carlo Tree Search original ",
-      "action": "search[Monte Carlo Tree Search original paper venue year introduced]",
+      "label": "search[Monte Carlo Tree Search]",
+      "action": "search[Monte Carlo Tree Search]",
       "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
       "detail": {
-        "query": "Monte Carlo Tree Search original paper venue year introduced",
+        "query": "Monte Carlo Tree Search",
         "document": "Monte Carlo Tree Search"
       },
       "terminal": false,
@@ -138,11 +137,11 @@
       "id": 5,
       "parent": 1,
       "depth": 2,
-      "label": "search[\"Bandit based Monte-Carlo Plannin",
-      "action": "search[\"Bandit based Monte-Carlo Planning\" venue year]",
+      "label": "search[Reasoning via Planning]",
+      "action": "search[Reasoning via Planning]",
       "observation": "Reasoning via Planning: Reasoning via Planning, or RAP, runs Monte Carlo Tree Search using the language model itself as the world model. Hao and colleagues presented it at EMNLP in 2023.",
       "detail": {
-        "query": "\"Bandit based Monte-Carlo Planning\" venue year",
+        "query": "Reasoning via Planning",
         "document": "Reasoning via Planning"
       },
       "terminal": false,
@@ -152,53 +151,54 @@
       "id": 6,
       "parent": 1,
       "depth": 2,
-      "label": "search[Coulom \"Monte-Carlo Tree Search\" ",
-      "action": "search[Coulom \"Monte-Carlo Tree Search\" 2006 venue]",
-      "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
+      "label": "search[AlphaGo]",
+      "action": "search[AlphaGo]",
+      "observation": "AlphaGo: AlphaGo paired Monte Carlo Tree Search with a policy network and a value network. Silver and colleagues published it in Nature in 2016.",
       "detail": {
-        "query": "Coulom \"Monte-Carlo Tree Search\" 2006 venue",
-        "document": "Monte Carlo Tree Search"
+        "query": "AlphaGo",
+        "document": "AlphaGo"
       },
       "terminal": false,
       "created_at": 4
     },
     {
       "id": 7,
-      "parent": 5,
+      "parent": 4,
       "depth": 3,
-      "label": "search[\"Bandit-based Monte-Carlo Plannin",
-      "action": "search[\"Bandit-based Monte-Carlo Planning ECML 2006\"]",
-      "observation": "Reasoning via Planning: Reasoning via Planning, or RAP, runs Monte Carlo Tree Search using the language model itself as the world model. Hao and colleagues presented it at EMNLP in 2023.",
+      "label": "search[Language Agent Tree Search]",
+      "action": "search[Language Agent Tree Search]",
+      "observation": "Language Agent Tree Search: Language Agent Tree Search, or LATS, was presented at ICML in 2024 by Zhou, Yan, Shlapentokh-Rothman, Wang and Wang. It adapts Monte Carlo Tree Search to language agents, adding a language model value function, real environment feedback, and a reflection step.",
       "detail": {
-        "query": "\"Bandit-based Monte-Carlo Planning ECML 2006\"",
-        "document": "Reasoning via Planning"
+        "query": "Language Agent Tree Search",
+        "document": "Language Agent Tree Search"
       },
       "terminal": false,
       "created_at": 4
     },
     {
       "id": 8,
-      "parent": 5,
+      "parent": 4,
       "depth": 3,
-      "label": "search[\"Kocsis Szepesv\u00e1ri ECML 2006 UCT ",
-      "action": "search[\"Kocsis Szepesv\u00e1ri ECML 2006 UCT Monte Carlo Tree Search\"]",
-      "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
+      "label": "finish[ECML 2006]",
+      "action": "finish[ECML 2006]",
+      "observation": "Answered 'ECML 2006'. The gold answer is 'Computers and Games 2006'.",
       "detail": {
-        "query": "\"Kocsis Szepesv\u00e1ri ECML 2006 UCT Monte Carlo Tree Search\"",
-        "document": "Monte Carlo Tree Search"
+        "answer": "ECML 2006",
+        "gold": "Computers and Games 2006",
+        "exact_match": false
       },
-      "terminal": false,
+      "terminal": true,
       "created_at": 4
     },
     {
       "id": 9,
-      "parent": 5,
-      "depth": 3,
-      "label": "finish[European Conference on Machine Le",
-      "action": "finish[European Conference on Machine Learning (ECML), 2006]",
-      "observation": "Answered 'European Conference on Machine Learning (ECML), 2006'. The gold answer is 'Computers and Games 2006'.",
+      "parent": 7,
+      "depth": 4,
+      "label": "finish[ECML 2006]",
+      "action": "finish[ECML 2006]",
+      "observation": "Answered 'ECML 2006'. The gold answer is 'Computers and Games 2006'.",
       "detail": {
-        "answer": "European Conference on Machine Learning (ECML), 2006",
+        "answer": "ECML 2006",
         "gold": "Computers and Games 2006",
         "exact_match": false
       },
@@ -207,28 +207,28 @@
     },
     {
       "id": 10,
-      "parent": 2,
-      "depth": 2,
-      "label": "search[\"Efficient Selectivity and Backup",
-      "action": "search[\"Efficient Selectivity and Backup Operators in Monte-Carlo Tree Search venue year\"]",
+      "parent": 7,
+      "depth": 4,
+      "label": "search[Monte Carlo Tree Search]",
+      "action": "search[Monte Carlo Tree Search]",
       "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
       "detail": {
-        "query": "\"Efficient Selectivity and Backup Operators in Monte-Carlo Tree Search venue year\"",
+        "query": "Monte Carlo Tree Search",
         "document": "Monte Carlo Tree Search"
       },
-      "terminal": false,
-      "created_at": 8
+      "terminal": true,
+      "created_at": 4
     },
     {
       "id": 11,
       "parent": 2,
       "depth": 2,
-      "label": "search[\"Monte Carlo Tree Search introduc",
-      "action": "search[\"Monte Carlo Tree Search introduced Coulom Computers and Games 2006\"]",
-      "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
+      "label": "search[Reflexion]",
+      "action": "search[Reflexion]",
+      "observation": "Reflexion: Reflexion turns a failed attempt into a written note that is placed in the next prompt. Shinn and colleagues presented it at NeurIPS in 2023. It reflects, but it does not search.",
       "detail": {
-        "query": "\"Monte Carlo Tree Search introduced Coulom Computers and Games 2006\"",
-        "document": "Monte Carlo Tree Search"
+        "query": "Reflexion",
+        "document": "Reflexion"
       },
       "terminal": false,
       "created_at": 8
@@ -237,15 +237,29 @@
       "id": 12,
       "parent": 2,
       "depth": 2,
-      "label": "finish[International Conference on Compu",
-      "action": "finish[International Conference on Computers and Games (CG), 2006]",
-      "observation": "Answered 'International Conference on Computers and Games (CG), 2006'. That is the gold answer.",
+      "label": "finish[Computers and Games 2006]",
+      "action": "finish[Computers and Games 2006]",
+      "observation": "Answered 'Computers and Games 2006'. That is the gold answer.",
       "detail": {
-        "answer": "International Conference on Computers and Games (CG), 2006",
+        "answer": "Computers and Games 2006",
         "gold": "Computers and Games 2006",
         "exact_match": true
       },
       "terminal": true,
+      "created_at": 8
+    },
+    {
+      "id": 13,
+      "parent": 2,
+      "depth": 2,
+      "label": "search[Monte Carlo Tree Search]",
+      "action": "search[Monte Carlo Tree Search]",
+      "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
+      "detail": {
+        "query": "Monte Carlo Tree Search",
+        "document": "Monte Carlo Tree Search"
+      },
+      "terminal": false,
       "created_at": 8
     }
   ],
@@ -255,12 +269,12 @@
       "op": "init",
       "iteration": 0,
       "title": "Root",
-      "summary": "Two-hop question answering with a retrieval tool. The search starts from an empty state; reward is 1 if the answer names the gold venue and year, else 0 (an oracle signal).",
+      "summary": "Two-hop question answering. The search starts from an empty state; reward is 1 if the answer names the gold venue and year, else 0 (an oracle signal).",
       "detail": {
         "task": {
-          "id": "multihop_qa",
+          "id": "multihop-qa",
           "family": "qa",
-          "title": "Two-hop question answering with a retrieval tool",
+          "title": "Two-hop question answering",
           "prompt": "LATS adapts an existing tree search algorithm. At which venue, and in which year, was the paper that introduced that algorithm presented?",
           "reward": "1 if the answer names the gold venue and year, else 0 (an oracle signal)",
           "context": {
@@ -353,53 +367,53 @@
         "children": [
           {
             "id": 1,
-            "label": "search[LATS Language Agent Tree Search a",
-            "text": "search[LATS Language Agent Tree Search adapts algorithm venue year]",
-            "observation": "Language Agent Tree Search: Language Agent Tree Search, or LATS, was presented at ICML in 2024 by Zhou, Yan, Shlapentokh-Rothman, Wang and Wang. It adapts Monte Carlo Tree Search to language agents, adding a language model value function, real environment feedback, and a reflection step.",
-            "detail": {
-              "query": "LATS Language Agent Tree Search adapts algorithm venue year",
-              "document": "Language Agent Tree Search"
-            },
-            "terminal": false,
-            "reward": null,
-            "samples": 1,
-            "lm": 0.8,
-            "sc": 0.3333,
-            "value": 0.5667,
-            "rejected": null
-          },
-          {
-            "id": 2,
-            "label": "search[\"Language Agent Tree Search\" pape",
-            "text": "search[\"Language Agent Tree Search\" paper]",
-            "observation": "Language Agent Tree Search: Language Agent Tree Search, or LATS, was presented at ICML in 2024 by Zhou, Yan, Shlapentokh-Rothman, Wang and Wang. It adapts Monte Carlo Tree Search to language agents, adding a language model value function, real environment feedback, and a reflection step.",
-            "detail": {
-              "query": "\"Language Agent Tree Search\" paper",
-              "document": "Language Agent Tree Search"
-            },
-            "terminal": false,
-            "reward": null,
-            "samples": 1,
-            "lm": 0.75,
-            "sc": 0.3333,
-            "value": 0.5417,
-            "rejected": null
-          },
-          {
-            "id": 3,
-            "label": "search[UCT algorithm introduced venue ye",
-            "text": "search[UCT algorithm introduced venue year ECML 2006]",
+            "label": "search[UCT]",
+            "text": "search[UCT]",
             "observation": "UCT: UCT is the selection rule most Monte Carlo Tree Search implementations use. Kocsis and Szepesvari derived it from the UCB1 bandit algorithm and presented it at ECML in 2006.",
             "detail": {
-              "query": "UCT algorithm introduced venue year ECML 2006",
+              "query": "UCT",
               "document": "UCT"
             },
             "terminal": false,
             "reward": null,
             "samples": 1,
-            "lm": 0.45,
+            "lm": 0.4,
             "sc": 0.3333,
-            "value": 0.3917,
+            "value": 0.3667,
+            "rejected": null
+          },
+          {
+            "id": 2,
+            "label": "search[Monte Carlo Tree Search]",
+            "text": "search[Monte Carlo Tree Search]",
+            "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
+            "detail": {
+              "query": "Monte Carlo Tree Search",
+              "document": "Monte Carlo Tree Search"
+            },
+            "terminal": false,
+            "reward": null,
+            "samples": 1,
+            "lm": 0.4,
+            "sc": 0.3333,
+            "value": 0.3667,
+            "rejected": null
+          },
+          {
+            "id": 3,
+            "label": "search[Reflexion]",
+            "text": "search[Reflexion]",
+            "observation": "Reflexion: Reflexion turns a failed attempt into a written note that is placed in the next prompt. Shinn and colleagues presented it at NeurIPS in 2023. It reflects, but it does not search.",
+            "detail": {
+              "query": "Reflexion",
+              "document": "Reflexion"
+            },
+            "terminal": false,
+            "reward": null,
+            "samples": 1,
+            "lm": 0.4,
+            "sc": 0.3333,
+            "value": 0.3667,
             "rejected": null
           }
         ],
@@ -414,7 +428,7 @@
       "path": [
         0
       ],
-      "tokens": 599,
+      "tokens": 123,
       "state": {
         "0": {
           "visits": 1,
@@ -427,27 +441,27 @@
         },
         "1": {
           "visits": 1,
-          "value": 0.5667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
@@ -465,26 +479,26 @@
         "scores": [
           {
             "id": 1,
-            "label": "search[LATS Language Agent Tree Search a",
-            "lm": 0.8,
+            "label": "search[UCT]",
+            "lm": 0.4,
             "sc": 0.3333,
-            "value": 0.5667,
+            "value": 0.3667,
             "reward": null
           },
           {
             "id": 2,
-            "label": "search[\"Language Agent Tree Search\" pape",
-            "lm": 0.75,
+            "label": "search[Monte Carlo Tree Search]",
+            "lm": 0.4,
             "sc": 0.3333,
-            "value": 0.5417,
+            "value": 0.3667,
             "reward": null
           },
           {
             "id": 3,
-            "label": "search[UCT algorithm introduced venue ye",
-            "lm": 0.45,
+            "label": "search[Reflexion]",
+            "lm": 0.4,
             "sc": 0.3333,
-            "value": 0.3917,
+            "value": 0.3667,
             "reward": null
           }
         ]
@@ -497,7 +511,7 @@
       "path": [
         0
       ],
-      "tokens": 599,
+      "tokens": 123,
       "state": {
         "0": {
           "visits": 1,
@@ -510,27 +524,27 @@
         },
         "1": {
           "visits": 1,
-          "value": 0.5667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
@@ -542,28 +556,31 @@
       "op": "simulation",
       "iteration": 1,
       "title": "Simulation",
-      "summary": "Greedy descent by value, in the real environment, reached a terminal state after 2 more steps.",
+      "summary": "Greedy descent by value, in the real environment, ran out of depth.",
       "detail": {
         "rollout": [
           1,
-          5,
-          9
+          4,
+          7,
+          10
         ],
-        "terminal": 9,
-        "truncated": false,
-        "observation": "Answered 'European Conference on Machine Learning (ECML), 2006'. The gold answer is 'Computers and Games 2006'."
+        "terminal": 10,
+        "truncated": true,
+        "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006."
       },
       "focus": [
         1,
-        5,
-        9
+        4,
+        7,
+        10
       ],
       "path": [
         0,
-        5,
-        9
+        4,
+        7,
+        10
       ],
-      "tokens": 2197,
+      "tokens": 871,
       "state": {
         "0": {
           "visits": 1,
@@ -576,82 +593,91 @@
         },
         "1": {
           "visits": 1,
-          "value": 0.5667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
           "visits": 1,
-          "value": 0.5167,
+          "value": 0.4917,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
           "visits": 1,
-          "value": 0.6167,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
           "visits": 1,
-          "value": 0.5667,
+          "value": 0.5333,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
           "visits": 1,
-          "value": 0.6417,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 1,
+          "value": 0.5083,
+          "reward": null,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": false
         }
@@ -662,42 +688,53 @@
       "op": "backpropagation",
       "iteration": 1,
       "title": "Backpropagation",
-      "summary": "Reward 0 flows from node 9 up to the root, revising 4 values.",
+      "summary": "Reward 0 flows from node 10 up to the root, revising 5 values.",
       "detail": {
         "reward": 0.0,
-        "leaf": 9,
+        "leaf": 10,
         "updates": [
           {
-            "id": 9,
+            "id": 10,
             "before": {
               "visits": 1,
-              "value": 0.6417
+              "value": 0.5083
             },
             "after": {
               "visits": 2,
-              "value": 0.3208
+              "value": 0.2542
             }
           },
           {
-            "id": 5,
+            "id": 7,
             "before": {
               "visits": 1,
-              "value": 0.6167
+              "value": 0.5333
             },
             "after": {
               "visits": 2,
-              "value": 0.3083
+              "value": 0.2667
+            }
+          },
+          {
+            "id": 4,
+            "before": {
+              "visits": 1,
+              "value": 0.4917
+            },
+            "after": {
+              "visits": 2,
+              "value": 0.2458
             }
           },
           {
             "id": 1,
             "before": {
               "visits": 1,
-              "value": 0.5667
+              "value": 0.3667
             },
             "after": {
               "visits": 2,
-              "value": 0.2833
+              "value": 0.1833
             }
           },
           {
@@ -714,18 +751,20 @@
         ]
       },
       "focus": [
-        9,
-        5,
+        10,
+        7,
+        4,
         1,
         0
       ],
       "path": [
         0,
         1,
-        5,
-        9
+        4,
+        7,
+        10
       ],
-      "tokens": 2197,
+      "tokens": 871,
       "state": {
         "0": {
           "visits": 2,
@@ -738,82 +777,91 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": false
         }
@@ -826,27 +874,29 @@
       "title": "Reflection",
       "summary": "The trajectory failed, so the agent writes down why. The note joins the context for every later expansion.",
       "detail": {
-        "node": 9,
-        "text": "European Conference on Machine Learning (ECML), 2006 is not the gold answer.",
+        "node": 10,
+        "text": "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer.",
         "trajectory": [
           0,
           1,
-          5,
-          9
+          4,
+          7,
+          10
         ],
         "reward": 0.0,
         "total_notes": 1
       },
       "focus": [
-        9
+        10
       ],
       "path": [
         0,
         1,
-        5,
-        9
+        4,
+        7,
+        10
       ],
-      "tokens": 2197,
+      "tokens": 871,
       "state": {
         "0": {
           "visits": 2,
@@ -859,82 +909,91 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": true
         }
@@ -945,7 +1004,7 @@
       "op": "selection",
       "iteration": 2,
       "title": "Selection",
-      "summary": "search[\"Language Agent Tree Search\" pape wins with UCT 1.3742 = 0.5417 exploit + 0.8326 explore.",
+      "summary": "search[Monte Carlo Tree Search] wins with UCT 1.1992 = 0.3667 exploit + 0.8326 explore.",
       "detail": {
         "levels": [
           {
@@ -955,31 +1014,31 @@
             "children": [
               {
                 "id": 1,
-                "label": "search[LATS Language Agent Tree Search a",
+                "label": "search[UCT]",
                 "visits": 2,
-                "exploit": 0.2833,
+                "exploit": 0.1833,
                 "explore": 0.5887,
-                "uct": 0.872,
+                "uct": 0.772,
                 "available": true,
                 "chosen": false
               },
               {
                 "id": 2,
-                "label": "search[\"Language Agent Tree Search\" pape",
+                "label": "search[Monte Carlo Tree Search]",
                 "visits": 1,
-                "exploit": 0.5417,
+                "exploit": 0.3667,
                 "explore": 0.8326,
-                "uct": 1.3742,
+                "uct": 1.1992,
                 "available": true,
                 "chosen": true
               },
               {
                 "id": 3,
-                "label": "search[UCT algorithm introduced venue ye",
+                "label": "search[Reflexion]",
                 "visits": 1,
-                "exploit": 0.3917,
+                "exploit": 0.3667,
                 "explore": 0.8326,
-                "uct": 1.2242,
+                "uct": 1.1992,
                 "available": true,
                 "chosen": false
               }
@@ -996,7 +1055,7 @@
         0,
         2
       ],
-      "tokens": 2197,
+      "tokens": 871,
       "state": {
         "0": {
           "visits": 2,
@@ -1009,82 +1068,91 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": true
         }
@@ -1100,33 +1168,34 @@
         "parent": 2,
         "children": [
           {
-            "id": 10,
-            "label": "search[\"Efficient Selectivity and Backup",
-            "text": "search[\"Efficient Selectivity and Backup Operators in Monte-Carlo Tree Search venue year\"]",
-            "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
+            "id": 11,
+            "label": "search[Reflexion]",
+            "text": "search[Reflexion]",
+            "observation": "Reflexion: Reflexion turns a failed attempt into a written note that is placed in the next prompt. Shinn and colleagues presented it at NeurIPS in 2023. It reflects, but it does not search.",
             "detail": {
-              "query": "\"Efficient Selectivity and Backup Operators in Monte-Carlo Tree Search venue year\"",
-              "document": "Monte Carlo Tree Search"
+              "query": "Reflexion",
+              "document": "Reflexion"
             },
             "terminal": false,
             "reward": null,
             "samples": 1,
-            "lm": 0.9,
+            "lm": 0.4,
             "sc": 0.3333,
-            "value": 0.6167,
+            "value": 0.3667,
             "rejected": null
           },
           {
-            "id": 11,
-            "label": "search[\"Monte Carlo Tree Search introduc",
-            "text": "search[\"Monte Carlo Tree Search introduced Coulom Computers and Games 2006\"]",
-            "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
+            "id": 12,
+            "label": "finish[Computers and Games 2006]",
+            "text": "finish[Computers and Games 2006]",
+            "observation": "Answered 'Computers and Games 2006'. That is the gold answer.",
             "detail": {
-              "query": "\"Monte Carlo Tree Search introduced Coulom Computers and Games 2006\"",
-              "document": "Monte Carlo Tree Search"
+              "answer": "Computers and Games 2006",
+              "gold": "Computers and Games 2006",
+              "exact_match": true
             },
-            "terminal": false,
-            "reward": null,
+            "terminal": true,
+            "reward": 1.0,
             "samples": 1,
             "lm": 0.85,
             "sc": 0.3333,
@@ -1134,39 +1203,38 @@
             "rejected": null
           },
           {
-            "id": 12,
-            "label": "finish[International Conference on Compu",
-            "text": "finish[International Conference on Computers and Games (CG), 2006]",
-            "observation": "Answered 'International Conference on Computers and Games (CG), 2006'. That is the gold answer.",
+            "id": 13,
+            "label": "search[Monte Carlo Tree Search]",
+            "text": "search[Monte Carlo Tree Search]",
+            "observation": "Monte Carlo Tree Search: Monte Carlo Tree Search is a planning algorithm that grows a tree of simulated futures. Remi Coulom introduced it, presenting Efficient Selectivity and Backup Operators for Monte-Carlo Tree Search at Computers and Games in 2006.",
             "detail": {
-              "answer": "International Conference on Computers and Games (CG), 2006",
-              "gold": "Computers and Games 2006",
-              "exact_match": true
+              "query": "Monte Carlo Tree Search",
+              "document": "Monte Carlo Tree Search"
             },
-            "terminal": true,
-            "reward": 1.0,
+            "terminal": false,
+            "reward": null,
             "samples": 1,
-            "lm": 0.8,
+            "lm": 0.35,
             "sc": 0.3333,
-            "value": 0.5667,
+            "value": 0.3417,
             "rejected": null
           }
         ],
         "n": 3,
         "reflections_in_context": [
-          "European Conference on Machine Learning (ECML), 2006 is not the gold answer. | finish:European Conference on Machine Learning (ECML), 2006"
+          "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer."
         ]
       },
       "focus": [
-        10,
         11,
-        12
+        12,
+        13
       ],
       "path": [
         0,
         2
       ],
-      "tokens": 3224,
+      "tokens": 1113,
       "state": {
         "0": {
           "visits": 2,
@@ -1179,110 +1247,119 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": true
         },
-        "10": {
-          "visits": 1,
-          "value": 0.6167,
-          "reward": null,
-          "lm": 0.9,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
         "11": {
           "visits": 1,
-          "value": 0.5917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.85,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "12": {
           "visits": 1,
-          "value": 0.5667,
+          "value": 0.5917,
           "reward": 1.0,
-          "lm": 0.8,
+          "lm": 0.85,
           "sc": 0.3333,
           "terminal": true,
+          "reflected": false
+        },
+        "13": {
+          "visits": 1,
+          "value": 0.3417,
+          "reward": null,
+          "lm": 0.35,
+          "sc": 0.3333,
+          "terminal": false,
           "reflected": false
         }
       }
@@ -1297,41 +1374,41 @@
         "lam": 0.5,
         "scores": [
           {
-            "id": 10,
-            "label": "search[\"Efficient Selectivity and Backup",
-            "lm": 0.9,
-            "sc": 0.3333,
-            "value": 0.6167,
-            "reward": null
-          },
-          {
             "id": 11,
-            "label": "search[\"Monte Carlo Tree Search introduc",
-            "lm": 0.85,
+            "label": "search[Reflexion]",
+            "lm": 0.4,
             "sc": 0.3333,
-            "value": 0.5917,
+            "value": 0.3667,
             "reward": null
           },
           {
             "id": 12,
-            "label": "finish[International Conference on Compu",
-            "lm": 0.8,
+            "label": "finish[Computers and Games 2006]",
+            "lm": 0.85,
             "sc": 0.3333,
-            "value": 0.5667,
+            "value": 0.5917,
             "reward": 1.0
+          },
+          {
+            "id": 13,
+            "label": "search[Monte Carlo Tree Search]",
+            "lm": 0.35,
+            "sc": 0.3333,
+            "value": 0.3417,
+            "reward": null
           }
         ]
       },
       "focus": [
-        10,
         11,
-        12
+        12,
+        13
       ],
       "path": [
         0,
         2
       ],
-      "tokens": 3224,
+      "tokens": 1113,
       "state": {
         "0": {
           "visits": 2,
@@ -1344,110 +1421,119 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": true
         },
-        "10": {
-          "visits": 1,
-          "value": 0.6167,
-          "reward": null,
-          "lm": 0.9,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
         "11": {
           "visits": 1,
-          "value": 0.5917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.85,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "12": {
           "visits": 1,
-          "value": 0.5667,
+          "value": 0.5917,
           "reward": 1.0,
-          "lm": 0.8,
+          "lm": 0.85,
           "sc": 0.3333,
           "terminal": true,
+          "reflected": false
+        },
+        "13": {
+          "visits": 1,
+          "value": 0.3417,
+          "reward": null,
+          "lm": 0.35,
+          "sc": 0.3333,
+          "terminal": false,
           "reflected": false
         }
       }
@@ -1465,7 +1551,7 @@
         "terminal": 12,
         "truncated": false,
         "skipped": true,
-        "observation": "Answered 'International Conference on Computers and Games (CG), 2006'. That is the gold answer."
+        "observation": "Answered 'Computers and Games 2006'. That is the gold answer."
       },
       "focus": [
         12
@@ -1475,7 +1561,7 @@
         2,
         12
       ],
-      "tokens": 3224,
+      "tokens": 1113,
       "state": {
         "0": {
           "visits": 2,
@@ -1488,110 +1574,119 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 1,
-          "value": 0.5417,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": true
         },
-        "10": {
-          "visits": 1,
-          "value": 0.6167,
-          "reward": null,
-          "lm": 0.9,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
         "11": {
           "visits": 1,
-          "value": 0.5917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.85,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "12": {
           "visits": 1,
-          "value": 0.5667,
+          "value": 0.5917,
           "reward": 1.0,
-          "lm": 0.8,
+          "lm": 0.85,
           "sc": 0.3333,
           "terminal": true,
+          "reflected": false
+        },
+        "13": {
+          "visits": 1,
+          "value": 0.3417,
+          "reward": null,
+          "lm": 0.35,
+          "sc": 0.3333,
+          "terminal": false,
           "reflected": false
         }
       }
@@ -1610,22 +1705,22 @@
             "id": 12,
             "before": {
               "visits": 1,
-              "value": 0.5667
+              "value": 0.5917
             },
             "after": {
               "visits": 2,
-              "value": 0.7833
+              "value": 0.7958
             }
           },
           {
             "id": 2,
             "before": {
               "visits": 1,
-              "value": 0.5417
+              "value": 0.3667
             },
             "after": {
               "visits": 2,
-              "value": 0.7708
+              "value": 0.6833
             }
           },
           {
@@ -1651,7 +1746,7 @@
         2,
         12
       ],
-      "tokens": 3224,
+      "tokens": 1113,
       "state": {
         "0": {
           "visits": 3,
@@ -1664,110 +1759,119 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 2,
-          "value": 0.7708,
+          "value": 0.6833,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": true
         },
-        "10": {
-          "visits": 1,
-          "value": 0.6167,
-          "reward": null,
-          "lm": 0.9,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
         "11": {
           "visits": 1,
-          "value": 0.5917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.85,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "12": {
           "visits": 2,
-          "value": 0.7833,
+          "value": 0.7958,
           "reward": 1.0,
-          "lm": 0.8,
+          "lm": 0.85,
           "sc": 0.3333,
           "terminal": true,
+          "reflected": false
+        },
+        "13": {
+          "visits": 1,
+          "value": 0.3417,
+          "reward": null,
+          "lm": 0.35,
+          "sc": 0.3333,
+          "terminal": false,
           "reflected": false
         }
       }
@@ -1787,11 +1891,11 @@
           2,
           12
         ],
-        "nodes": 13,
+        "nodes": 14,
         "iterations_run": 2,
         "stopped_because": "a trajectory reached the target reward",
         "reflections": [
-          "European Conference on Machine Learning (ECML), 2006 is not the gold answer. | finish:European Conference on Machine Learning (ECML), 2006"
+          "That branch ran search[UCT] then search[Monte Carlo Tree Search] then search[Language Agent Tree Search] then search[Monte Carlo Tree Search] and never committed to an answer."
         ]
       },
       "focus": [
@@ -1804,7 +1908,7 @@
         2,
         12
       ],
-      "tokens": 3224,
+      "tokens": 1113,
       "state": {
         "0": {
           "visits": 3,
@@ -1817,110 +1921,119 @@
         },
         "1": {
           "visits": 2,
-          "value": 0.2833,
+          "value": 0.1833,
           "reward": null,
-          "lm": 0.8,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "2": {
           "visits": 2,
-          "value": 0.7708,
+          "value": 0.6833,
           "reward": null,
-          "lm": 0.75,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "3": {
           "visits": 1,
-          "value": 0.3917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.45,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "4": {
-          "visits": 1,
-          "value": 0.5167,
+          "visits": 2,
+          "value": 0.2458,
           "reward": null,
-          "lm": 0.7,
+          "lm": 0.65,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "5": {
-          "visits": 2,
-          "value": 0.3083,
+          "visits": 1,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.9,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "6": {
           "visits": 1,
-          "value": 0.4667,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.6,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "7": {
-          "visits": 1,
-          "value": 0.5667,
+          "visits": 2,
+          "value": 0.2667,
           "reward": null,
-          "lm": 0.8,
-          "sc": 0.3333,
+          "lm": 0.4,
+          "sc": 0.6667,
           "terminal": false,
           "reflected": false
         },
         "8": {
           "visits": 1,
-          "value": 0.5417,
-          "reward": null,
-          "lm": 0.75,
+          "value": 0.4942,
+          "reward": 0.0,
+          "lm": 0.655,
           "sc": 0.3333,
-          "terminal": false,
+          "terminal": true,
           "reflected": false
         },
         "9": {
-          "visits": 2,
-          "value": 0.3208,
+          "visits": 1,
+          "value": 0.4942,
           "reward": 0.0,
-          "lm": 0.95,
+          "lm": 0.655,
           "sc": 0.3333,
+          "terminal": true,
+          "reflected": false
+        },
+        "10": {
+          "visits": 2,
+          "value": 0.2542,
+          "reward": 0.0,
+          "lm": 0.35,
+          "sc": 0.6667,
           "terminal": true,
           "reflected": true
         },
-        "10": {
-          "visits": 1,
-          "value": 0.6167,
-          "reward": null,
-          "lm": 0.9,
-          "sc": 0.3333,
-          "terminal": false,
-          "reflected": false
-        },
         "11": {
           "visits": 1,
-          "value": 0.5917,
+          "value": 0.3667,
           "reward": null,
-          "lm": 0.85,
+          "lm": 0.4,
           "sc": 0.3333,
           "terminal": false,
           "reflected": false
         },
         "12": {
           "visits": 2,
-          "value": 0.7833,
+          "value": 0.7958,
           "reward": 1.0,
-          "lm": 0.8,
+          "lm": 0.85,
           "sc": 0.3333,
           "terminal": true,
+          "reflected": false
+        },
+        "13": {
+          "visits": 1,
+          "value": 0.3417,
+          "reward": null,
+          "lm": 0.35,
+          "sc": 0.3333,
+          "terminal": false,
           "reflected": false
         }
       }

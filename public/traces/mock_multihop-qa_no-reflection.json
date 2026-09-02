@@ -1,14 +1,14 @@
 {
   "schema": "lats-trace/1",
-  "name": "mock_multihop_qa_no_reflection",
+  "name": "mock_multihop-qa_no-reflection",
   "generated_by": {
     "package": "run_lats",
     "version": "1.0.0"
   },
   "task": {
-    "id": "multihop_qa",
+    "id": "multihop-qa",
     "family": "qa",
-    "title": "Two-hop question answering with a retrieval tool",
+    "title": "Two-hop question answering",
     "prompt": "LATS adapts an existing tree search algorithm. At which venue, and in which year, was the paper that introduced that algorithm presented?",
     "reward": "1 if the answer names the gold venue and year, else 0 (an oracle signal)",
     "context": {
@@ -267,12 +267,12 @@
       "op": "init",
       "iteration": 0,
       "title": "Root",
-      "summary": "Two-hop question answering with a retrieval tool. The search starts from an empty state; reward is 1 if the answer names the gold venue and year, else 0 (an oracle signal).",
+      "summary": "Two-hop question answering. The search starts from an empty state; reward is 1 if the answer names the gold venue and year, else 0 (an oracle signal).",
       "detail": {
         "task": {
-          "id": "multihop_qa",
+          "id": "multihop-qa",
           "family": "qa",
-          "title": "Two-hop question answering with a retrieval tool",
+          "title": "Two-hop question answering",
           "prompt": "LATS adapts an existing tree search algorithm. At which venue, and in which year, was the paper that introduced that algorithm presented?",
           "reward": "1 if the answer names the gold venue and year, else 0 (an oracle signal)",
           "context": {

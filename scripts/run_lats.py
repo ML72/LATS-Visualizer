@@ -4,16 +4,21 @@ Run Language Agent Tree Search and write a trace the viewer can replay.
 
     python scripts/run_lats.py                      # every bundled preset
     python scripts/run_lats.py --list               # what can be run
-    python scripts/run_lats.py --task game_of_24    # one task, its own defaults
-    python scripts/run_lats.py --task game_of_24 --w 0 --seed 3 --name greedy
+    python scripts/run_lats.py --task game-of-24   # one task, its own defaults
+    python scripts/run_lats.py --task game-of-24 --w 0 --seed 3 --name greedy
     python scripts/run_lats.py --publish            # refresh public/traces/
 
-Traces land in a timestamped directory under ``results/lats_traces/``, which is
+Traces land in a timestamped directory under ``results/lats-traces/``, which is
 gitignored::
 
-    results/lats_traces/20260901-041530/
-        game_of_24.json ...     one file per trace
-        manifest.json           an index of what this run produced
+    results/lats-traces/20260901-041530/
+        traces-manifest.json    an index of what this run produced
+        traces/
+            mock_game-of-24.json ...    one file per trace
+
+A name is ``<policy>_<task>_<variant>``: ``-`` joins the words of one phrase,
+``_`` joins the phrases. So ``mock_game-of-24_no-value`` reads as the mock
+policy, on Game of 24, with the value function ablated.
 
 Drop any of those onto the viewer to step through it. ``--publish`` writes into
 ``public/traces/`` instead - that is the committed set the viewer loads on
@@ -45,15 +50,26 @@ from run_lats.trace import TraceRecorder  # noqa: E402
 
 ROOT = SCRIPTS.parent
 #: Generated runs. Gitignored, one timestamped directory each.
-TRACE_RESULTS = ROOT / "results" / "lats_traces"
+TRACE_RESULTS = ROOT / "results" / "lats-traces"
 #: The committed set the viewer serves as static files.
 PUBLIC_TRACES = ROOT / "public" / "traces"
 
 MANIFEST_SCHEMA = "lats-trace-manifest/1"
 
 
+def manifest_path(trace_dir: Path) -> Path:
+    """Where the index of ``trace_dir`` lives: beside the folder, not inside it.
+
+    ``public/traces/`` is indexed by ``public/traces-manifest.json``. The index
+    is not a trace, and keeping it out means every file in the folder is one -
+    the viewer can list the directory, a script can glob it, and nothing has to
+    special-case a name.
+    """
+    return trace_dir.parent / f"{trace_dir.name}-manifest.json"
+
+
 def trace_name(base: str, llm: str) -> str:
-    """``game_of_24`` + ``openai`` -> ``openai_game_of_24``.
+    """``game-of-24`` + ``openai`` -> ``openai_game-of-24``.
 
     Which policy produced a trace is the first thing you want to know about it
     and the easiest thing to lose track of, so it goes in the name rather than
@@ -63,13 +79,46 @@ def trace_name(base: str, llm: str) -> str:
     return base if base.startswith(f"{llm}_") else f"{llm}_{base}"
 
 
-#: The offline traces that ship with the viewer. Three of them are ablations,
-#: which is the point: the interesting thing about a knob is what happens when
-#: you turn it.
+#: The offline traces that ship with the viewer, in the order the picker
+#: groups them: one environment at a time, the plain run before its ablations.
+#: Three of these are ablations, which is the point - the interesting thing
+#: about a knob is what happens when you turn it.
 PRESETS: list[dict] = [
     {
-        "name": "merge_intervals",
-        "task": "merge_intervals",
+        "name": "game-of-24",
+        "task": "game-of-24",
+        "note": (
+            "All six operations, including simulation: the tree descends greedily "
+            "by value, in the real environment, until one number is left. Solved "
+            "on the fifth iteration, after four dead ends."
+        ),
+        "overrides": {},
+    },
+    {
+        "name": "game-of-24_no-value",
+        "task": "game-of-24",
+        "note": (
+            "Ablation: lambda = 0, so V(s) is self-consistency alone and the "
+            "model's own judgement is thrown away. A solution does turn up - "
+            "built during a rollout on the first iteration - but selection never "
+            "walks back into it, so all twelve iterations back up a reward of 0."
+        ),
+        "overrides": {"lam": 0.0},
+    },
+    {
+        "name": "game-of-24_greedy",
+        "task": "game-of-24",
+        "note": (
+            "Ablation: w = 0, so UCT collapses to pure exploitation. It starves "
+            "the branch that wins: the answer opens on a fraction, which the "
+            "policy scores badly, and without the exploration bonus that branch "
+            "stays the least visited of the five. Never finds 24."
+        ),
+        "overrides": {"w": 0.0},
+    },
+    {
+        "name": "merge-intervals",
+        "task": "merge-intervals",
         "note": (
             "The programming setting. Every node is a complete program and the "
             "reward is the fraction of tests it passes, so simulation is skipped. "
@@ -79,38 +128,28 @@ PRESETS: list[dict] = [
         "overrides": {},
     },
     {
-        "name": "game_of_24",
-        "task": "game_of_24",
+        "name": "multihop-qa",
+        "task": "multihop-qa",
         "note": (
-            "All six operations, including simulation: the tree descends greedily "
-            "by value, in the real environment, until one number is left. Solved "
-            "on the fifth iteration, after four dead ends."
+            "Two-hop retrieval. The corpus holds a tempting near-miss answer, and "
+            "the policy has a recency bias that walks straight into it; the second "
+            "iteration backs out and finds the right document."
         ),
         "overrides": {},
     },
     {
-        "name": "game_of_24_no_value",
-        "task": "game_of_24",
+        "name": "multihop-qa_no-reflection",
+        "task": "multihop-qa",
         "note": (
-            "Ablation: lambda = 0, so V(s) is self-consistency alone and the "
-            "model's own judgement is thrown away. It still gets there, but it "
-            "needs every iteration it has and half again as many nodes."
+            "Ablation: reflection off. Identical outcome, one step shorter - which "
+            "is the paper's own finding. Reflection is the smallest of its three "
+            "ablations; the value function and the search structure matter more."
         ),
-        "overrides": {"lam": 0.0},
+        "overrides": {"reflect": False},
     },
     {
-        "name": "game_of_24_greedy",
-        "task": "game_of_24",
-        "note": (
-            "Ablation: w = 0, so UCT collapses to pure exploitation and selection "
-            "never leaves the branch it liked first. It grows a larger tree than "
-            "the full search and never finds 24 at all."
-        ),
-        "overrides": {"w": 0.0},
-    },
-    {
-        "name": "game_of_24_hard",
-        "task": "game_of_24_hard",
+        "name": "game-of-24_hard",
+        "task": "game-of-24_hard",
         "note": (
             "6, 9, 9, 10, where the twelve best-looking first moves are all dead "
             "ends and every solution ends in 9 + 15. The offline policy rates a "
@@ -120,26 +159,6 @@ PRESETS: list[dict] = [
             "the same puzzle."
         ),
         "overrides": {},
-    },
-    {
-        "name": "multihop_qa",
-        "task": "multihop_qa",
-        "note": (
-            "Two-hop retrieval. The corpus holds a tempting near-miss answer, and "
-            "the policy has a recency bias that walks straight into it; the second "
-            "iteration backs out and finds the right document."
-        ),
-        "overrides": {},
-    },
-    {
-        "name": "multihop_qa_no_reflection",
-        "task": "multihop_qa",
-        "note": (
-            "Ablation: reflection off. Identical outcome, one step shorter - which "
-            "is the paper's own finding. Reflection is the smallest of its three "
-            "ablations; the value function and the search structure matter more."
-        ),
-        "overrides": {"reflect": False},
     },
 ]
 
@@ -214,7 +233,7 @@ def display(path: Path) -> str:
 
 
 def read_manifest(folder: Path) -> list[dict]:
-    path = folder / "manifest.json"
+    path = manifest_path(folder)
     if not path.exists():
         return []
     try:
@@ -229,25 +248,34 @@ def write_manifest(folder: Path, entries: list[dict]) -> Path:
     Deliberately free of timestamps: regenerating ``public/traces/`` with the
     same seeds should produce no diff at all.
     """
-    path = folder / "manifest.json"
+    path = manifest_path(folder)
+    path.parent.mkdir(parents=True, exist_ok=True)
     payload = {"schema": MANIFEST_SCHEMA, "traces": entries}
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return path
 
 
 def preset_order(entries: list[dict]) -> list[dict]:
-    """The offline presets in their curated order, then everything else.
+    """The reading order: one environment at a time, working example first.
 
-    Names carry a policy prefix, so the curated index is looked up on what
-    follows it; a trace from any other policy sorts after the whole preset set.
+    Environments come in the order :data:`PRESETS` first mentions them; within
+    an environment the offline policy comes before a real model, and a run that
+    solved its task comes before one that did not. Someone opening the viewer
+    should land on a search that works, not on an ablation that fails.
+
+    The viewer sorts by the same rule, so a hand-promoted trace lands in the
+    right group whether or not this function put it there.
     """
+    tasks: dict[str, int] = {}
+    for preset in PRESETS:
+        tasks.setdefault(preset["task"], len(tasks))
     order = {p["name"]: i for i, p in enumerate(PRESETS)}
 
     def rank(base: str) -> int:
         """The curated index, matching on the longest preset name that fits.
 
-        A variant like ``game_of_24_hard_wide`` is not a preset itself, but it
-        belongs beside ``game_of_24_hard`` rather than at the end of the list.
+        A variant like ``game-of-24_hard_wide`` is not a preset itself, but it
+        belongs beside ``game-of-24_hard`` rather than at the end of the list.
         """
         if base in order:
             return order[base]
@@ -256,7 +284,9 @@ def preset_order(entries: list[dict]) -> list[dict]:
 
     def key(entry: dict) -> tuple:
         base = entry["name"].split("_", 1)[-1]
-        return (0 if entry.get("policy") == "mock" else 1,
+        return (tasks.get(entry.get("task", ""), len(tasks)),
+                0 if entry.get("policy") == "mock" else 1,
+                0 if entry.get("solved") else 1,
                 rank(base),
                 entry["name"])
 
@@ -273,14 +303,15 @@ def destination(args: argparse.Namespace) -> Path:
     if args.publish:
         PUBLIC_TRACES.mkdir(parents=True, exist_ok=True)
         return PUBLIC_TRACES
-    folder = TRACE_RESULTS / datetime.now().strftime("%Y%m%d-%H%M%S")
+    folder = TRACE_RESULTS / datetime.now().strftime("%Y%m%d-%H%M%S") / "traces"
     folder.mkdir(parents=True, exist_ok=True)
     return folder
 
 
 def report(folder: Path, count: int, args: argparse.Namespace) -> None:
     """Say where the traces went, and what to do with them."""
-    print(f"\nwrote {count} trace(s) and manifest.json to {display(folder)}/")
+    print(f"\nwrote {count} trace(s) to {display(folder)}/")
+    print(f"       indexed in {display(manifest_path(folder))}")
     if args.publish:
         print("that is the set the viewer loads on startup - "
               "`npm run dev` to see it.")

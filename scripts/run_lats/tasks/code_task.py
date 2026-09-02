@@ -248,9 +248,9 @@ REFINEMENTS: dict[str, list[dict[str, Any]]] = {
 class MergeIntervalsTask(Task):
     """Write ``merge`` against five visible tests. Reward = fraction passing."""
 
-    id = "merge_intervals"
+    id = "merge-intervals"
     family = "programming"
-    title = "Write merge_intervals against a visible test suite"
+    title = "Merge intervals"
     prompt = PROMPT
     reward_desc = "fraction of the five unit tests that pass, measured by running them"
 

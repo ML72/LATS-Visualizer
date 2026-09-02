@@ -10,10 +10,10 @@
 
 import type { NodeState, Step, Trace, TraceNode } from '../types'
 
-export const NODE_W = 138
-export const NODE_H = 50
-const GAP_X = 18
-const GAP_Y = 78
+export const NODE_W = 128
+export const NODE_H = 46
+const GAP_X = 14
+const GAP_Y = 66
 
 export interface Placed {
   node: TraceNode

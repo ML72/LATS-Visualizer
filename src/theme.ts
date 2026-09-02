@@ -1,9 +1,13 @@
 /**
- * The visual system, ported from `scripts/create_video/theme.py`.
+ * The visual system.
  *
- * The video and this viewer are two windows onto the same algorithm, so they
- * use one palette and one colour grammar. Colour carries meaning here exactly
- * as it does there:
+ * Light, because this is a teaching tool: it is read next to a paper, printed,
+ * projected in a lit room and screenshotted into slides, and a near-black page
+ * survives none of those well.
+ *
+ * The colour grammar is the one the explainer video uses, re-tuned for paper
+ * rather than for a dark canvas. Colour carries meaning here exactly as it does
+ * there:
  *
  *     blue    structure / the search algorithm itself
  *     amber   the thing you should be looking at right now
@@ -11,33 +15,43 @@
  *     red     low value, failure, dead end
  *     violet  reflection
  *     teal    the environment / external feedback
+ *
+ * Every hue is picked to clear 4.5:1 against both the page and a card, so a
+ * number that carries meaning is never the faint one on the screen.
  */
 
 import { createTheme } from '@mui/material/styles'
 
-export const BG = '#0E1117'
-export const SURFACE = '#161C25'
-export const SURFACE_2 = '#1F2733'
-export const STROKE = '#2E3947'
-export const EDGE = '#4A5A6E'
+/** The page. Cool grey, so a white card lifts off it without a shadow. */
+export const BG = '#F4F6F9'
+export const SURFACE = '#FFFFFF'
+/** Insets and nested blocks: a panel inside a panel. */
+export const SURFACE_2 = '#F4F6FA'
+export const STROKE = '#E1E6ED'
+/** Tree edges. Visible across a large canvas, but never the subject. */
+export const EDGE = '#A9B4C4'
 
-export const INK = '#EEF2F7'
-export const INK_DIM = '#93A1B5'
-export const INK_FAINT = '#5B6879'
+export const INK = '#141A24'
+export const INK_DIM = '#48566A'
+export const INK_FAINT = '#66717F'
 
-export const PRIMARY = '#4EA8FF'
-export const ACCENT = '#FFB547'
-export const GOOD = '#3DD68C'
-export const BAD = '#FF6B6B'
-export const VIOLET = '#B98CFF'
-export const TEAL = '#2DD4BF'
+export const PRIMARY = '#2563EB'
+export const ACCENT = '#B45309'
+export const GOOD = '#15803D'
+export const BAD = '#DC2626'
+export const VIOLET = '#7C3AED'
+export const TEAL = '#0F766E'
+
+/** A card's lift. One soft shadow, used everywhere, never stacked. */
+export const CARD_SHADOW = '0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06)'
 
 /**
  * Stops for mapping a value in [0, 1] onto colour, chosen so that neighbouring
  * node values stay distinguishable in the middle of the range - which is where
- * most of the interesting search happens.
+ * most of the interesting search happens - and so that every stop is still
+ * legible as text, because this ramp colours numbers as well as swatches.
  */
-const VALUE_STOPS = ['#F2565B', '#FF8A3D', '#FFC24A', '#A9D95E', GOOD]
+const VALUE_STOPS = ['#C81E1E', '#C2410C', '#A16207', '#4D7C0F', GOOD]
 
 function mix(a: string, b: string, t: number): string {
   const parse = (hex: string) => [
@@ -71,7 +85,7 @@ export const OP_COLOR: Record<string, string> = {
   selection: PRIMARY,
   expansion: ACCENT,
   evaluation: TEAL,
-  simulation: '#8AB4F8',
+  simulation: '#4F46E5',
   backpropagation: GOOD,
   reflection: VIOLET,
   result: INK,
@@ -85,7 +99,7 @@ const SANS =
 
 export const theme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     background: { default: BG, paper: SURFACE },
     primary: { main: PRIMARY },
     secondary: { main: ACCENT },
@@ -100,44 +114,60 @@ export const theme = createTheme({
   typography: {
     fontFamily: SANS,
     fontSize: 14,
-    h6: { fontSize: '1rem', fontWeight: 600, letterSpacing: 0 },
-    subtitle2: { fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.04em' },
-    body2: { fontSize: '0.84rem', lineHeight: 1.55 },
-    caption: { fontSize: '0.72rem', color: INK_DIM },
+    h6: { fontSize: '1.02rem', fontWeight: 650, letterSpacing: '-0.011em' },
+    subtitle2: { fontSize: '0.72rem', fontWeight: 650, letterSpacing: '0.055em' },
+    body2: { fontSize: '0.845rem', lineHeight: 1.6 },
+    caption: { fontSize: '0.72rem', lineHeight: 1.5, color: INK_DIM },
     button: { textTransform: 'none', fontWeight: 600 },
   },
   components: {
     MuiPaper: {
       styleOverrides: {
-        root: { backgroundImage: 'none', border: `1px solid ${STROKE}` },
+        root: {
+          backgroundImage: 'none',
+          border: `1px solid ${STROKE}`,
+          boxShadow: CARD_SHADOW,
+        },
       },
     },
     MuiChip: {
       styleOverrides: {
         root: { fontVariantNumeric: 'tabular-nums' },
-        sizeSmall: { height: 20, fontSize: '0.7rem' },
+        sizeSmall: { height: 21, fontSize: '0.7rem' },
+        outlined: { borderColor: STROKE, backgroundColor: SURFACE_2 },
       },
     },
     MuiTooltip: {
       styleOverrides: {
         tooltip: {
-          backgroundColor: SURFACE_2,
-          border: `1px solid ${STROKE}`,
+          backgroundColor: '#1F2937',
+          color: '#F8FAFC',
           fontSize: '0.75rem',
+          lineHeight: 1.5,
           maxWidth: 340,
+          padding: '6px 9px',
         },
+        arrow: { color: '#1F2937' },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        // The picker is the control most people need first; give it a real
+        // edge rather than the barely-there default.
+        outlined: { backgroundColor: SURFACE },
       },
     },
     MuiCssBaseline: {
       styleOverrides: {
-        // The tree canvas and the inspector both scroll; make those scrollbars
-        // quiet rather than chrome-coloured slabs over a near-black page.
+        // The tree canvas and the inspector both scroll; keep those scrollbars
+        // quiet rather than letting them draw a grey slab down the page.
         '*::-webkit-scrollbar': { width: 10, height: 10 },
         '*::-webkit-scrollbar-thumb': {
-          background: STROKE,
+          background: '#CBD3DE',
           borderRadius: 5,
           border: `2px solid ${BG}`,
         },
+        '*::-webkit-scrollbar-thumb:hover': { background: '#B3BDCB' },
         '*::-webkit-scrollbar-track': { background: 'transparent' },
       },
     },

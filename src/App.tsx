@@ -1,13 +1,14 @@
 /**
- * LATS trace viewer.
+ * LATS trace visualizer.
  *
  * Loads a trace written by `python scripts/run_lats.py` and replays it one
  * operation at a time: the tree on the left grows as the search grew, the
  * panel on the right shows the arithmetic behind whatever just happened.
  *
  * Traces come from two places. The ones committed in `public/traces/` are
- * served as static files under /traces/, and anything the user drops on the
- * window is validated and held in memory for the session.
+ * served as static files under /traces/ and indexed by `traces-manifest.json`
+ * beside that folder; anything the user drops on the window is validated and
+ * held in memory for the session.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -22,12 +23,15 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import Toolbar from '@mui/material/Toolbar'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined'
 
 import NodeDetail from './components/NodeDetail'
 import OperationPanel from './components/OperationPanels'
@@ -35,7 +39,8 @@ import Timeline from './components/Timeline'
 import TraceHeader from './components/TraceHeader'
 import TracePicker, { type Source } from './components/TracePicker'
 import TreeView from './components/TreeView'
-import { layoutTree, viewAt } from './lib/layout'
+import Tour, { type TourStop } from './components/Tour'
+import { viewAt } from './lib/layout'
 import { readTraceFile, validateManifest, validateTrace } from './lib/validate'
 import type { Trace } from './types'
 import {
@@ -56,6 +61,8 @@ const BASE_TICK = 1100
 
 /** Where the bundled traces are served from, relative to the app's base. */
 const TRACES = 'traces/'
+/** Their index. Beside the folder rather than in it: it is not a trace. */
+const MANIFEST = 'traces-manifest.json'
 
 const url = (file: string) => new URL(file, document.baseURI).href
 
@@ -77,6 +84,13 @@ export default function App() {
   const [dragging, setDragging] = useState(false)
   const dragDepth = useRef(0)
 
+  const [tour, setTour] = useState(0)
+  const tourOffered = useRef(false)
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
   const narrow = useMediaQuery('(max-width: 1100px)')
 
   // -- bundled traces ------------------------------------------------------
@@ -85,10 +99,10 @@ export default function App() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(url(`${TRACES}manifest.json`))
-        if (!res.ok) throw new Error(`manifest.json returned ${res.status}`)
+        const res = await fetch(url(MANIFEST))
+        if (!res.ok) throw new Error(`${MANIFEST} returned ${res.status}`)
         const manifest = validateManifest(await res.json())
-        if (!manifest) throw new Error('manifest.json is not a trace index')
+        if (!manifest) throw new Error(`${MANIFEST} is not a trace index`)
         if (cancelled) return
         setSources(
           manifest.traces.map((entry) => ({
@@ -96,20 +110,22 @@ export default function App() {
             label: entry.name,
             kind: 'bundled' as const,
             file: entry.file,
+            task: entry.task,
+            taskTitle: entry.title,
             note: entry.note,
             solved: entry.solved,
           })),
         )
         if (manifest.traces.length === 0) {
           setBootError(
-            'public/traces/manifest.json lists no traces. Run `python scripts/run_lats.py --publish` to generate them.',
+            `public/${MANIFEST} lists no traces. Run \`python scripts/run_lats.py --publish\` to generate them.`,
           )
           setLoading(false)
         }
       } catch (err) {
         if (cancelled) return
         setBootError(
-          `Could not load traces/manifest.json (${String(err)}). Run \`python scripts/run_lats.py --publish\` from the repository root, then reload. You can still upload a trace by hand.`,
+          `Could not load ${MANIFEST} (${String(err)}). Run \`python scripts/run_lats.py --publish\` from the repository root, then reload. You can still upload a trace by hand.`,
         )
         setLoading(false)
       }
@@ -119,7 +135,8 @@ export default function App() {
     }
   }, [])
 
-  // Select the first bundled trace once the index arrives.
+  // Select the first bundled trace once the index arrives. The manifest is in
+  // reading order, so that is the introductory run, not an arbitrary one.
   useEffect(() => {
     if (!current && sources.length) setCurrent(sources[0].key)
   }, [sources, current])
@@ -172,47 +189,93 @@ export default function App() {
     setLoading(false)
   }
 
-  // -- uploads -------------------------------------------------------------
+  // -- the first-run tour --------------------------------------------------
 
-  const handleFiles = useCallback(
-    async (files: FileList | null) => {
-      if (!files || files.length === 0) return
-      const added: Source[] = []
-      const traces: Record<string, Trace> = {}
-      const problems: string[] = []
+  // Once per page load, after a trace has actually rendered - the tour points
+  // at panels that do not exist until then. Deliberately not remembered
+  // between visits: this is a demo people arrive at cold, and skipping it costs
+  // one click.
+  useEffect(() => {
+    if (!trace || tourOffered.current) return
+    // No rAF here: effects already run after the commit that mounted the
+    // panels, and a deferred open would be cancelled by StrictMode's second
+    // pass in development, which the ref guard would then refuse to retry.
+    tourOffered.current = true
+    setTour((n) => n + 1)
+  }, [trace])
 
-      for (const file of Array.from(files)) {
-        const result = await readTraceFile(file)
-        if (!result.ok) {
-          problems.push(`${file.name}:`, ...result.errors.map((e) => `  ${e}`))
-          continue
-        }
-        const key = `uploaded:${file.name}:${Date.now()}:${added.length}`
-        traces[key] = result.trace
-        added.push({
-          key,
-          label: result.trace.name || file.name,
-          kind: 'uploaded',
-          note: `${file.name} · ${result.trace.nodes.length} nodes · ${result.trace.steps.length} steps`,
-          solved: result.trace.result?.solved,
-        })
-        if (result.warnings.length) problems.push(...result.warnings)
-      }
+  const closeTour = useCallback(() => setTour(0), [])
 
-      if (added.length) {
-        setUploaded((prev) => ({ ...prev, ...traces }))
-        setSources((prev) => [...prev, ...added])
-        setCurrent(added[added.length - 1].key)
-        setNotice(
-          added.length === 1
-            ? `Loaded ${added[0].label}.`
-            : `Loaded ${added.length} traces.`,
-        )
-      }
-      if (problems.length) setErrors(problems)
-    },
+  const stops: TourStop[] = useMemo(
+    () => [
+      {
+        id: 'picker',
+        title: 'Pick a run',
+        body: 'Eleven searches ship with the viewer, grouped by environment: the plain run first, then the ablations that turn one knob off, then the same puzzle under a real model. Or drop a trace of your own on the window.',
+        target: pickerRef,
+        place: 'bottom',
+      },
+      {
+        id: 'header',
+        title: 'What is being searched',
+        body: 'The task, and the settings this run used — n samples per expansion, the exploration weight w, the blend λ between the model’s own score and self-consistency. Hover any of them for what it means.',
+        target: headerRef,
+        place: 'bottom',
+      },
+      {
+        id: 'timeline',
+        title: 'Step through it',
+        body: 'The strip shows the six operations of one LATS iteration and which are done. Scrub the timeline, or use ← and → to step and space to play. The tree above grows exactly as the search grew.',
+        target: timelineRef,
+        place: 'top',
+      },
+      {
+        id: 'panel',
+        title: 'Read what just happened',
+        body: 'Every step is explained here with its own arithmetic — the two halves of UCT fighting over a branch, the samples that collapsed into one child, the reward travelling back up. Click any node in the tree for its full detail.',
+        target: panelRef,
+        place: 'left',
+      },
+    ],
     [],
   )
+
+  // -- uploads -------------------------------------------------------------
+
+  const handleFiles = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const added: Source[] = []
+    const traces: Record<string, Trace> = {}
+    const problems: string[] = []
+
+    for (const file of Array.from(files)) {
+      const result = await readTraceFile(file)
+      if (!result.ok) {
+        problems.push(`${file.name}:`, ...result.errors.map((e) => `  ${e}`))
+        continue
+      }
+      const key = `uploaded:${file.name}:${Date.now()}:${added.length}`
+      traces[key] = result.trace
+      added.push({
+        key,
+        label: result.trace.name || file.name,
+        kind: 'uploaded',
+        note: `${file.name} · ${result.trace.nodes.length} nodes · ${result.trace.steps.length} steps`,
+        solved: result.trace.result?.solved,
+      })
+      if (result.warnings.length) problems.push(...result.warnings)
+    }
+
+    if (added.length) {
+      setUploaded((prev) => ({ ...prev, ...traces }))
+      setSources((prev) => [...prev, ...added])
+      setCurrent(added[added.length - 1].key)
+      setNotice(
+        added.length === 1 ? `Loaded ${added[0].label}.` : `Loaded ${added.length} traces.`,
+      )
+    }
+    if (problems.length) setErrors(problems)
+  }, [])
 
   // Drag and drop anywhere on the window. The counter guards against the
   // dragleave that fires every time the pointer crosses a child element.
@@ -262,6 +325,8 @@ export default function App() {
   }, [playing, index, last, speed, trace])
 
   useEffect(() => {
+    // The tour owns the arrow keys while it is up.
+    if (tour > 0) return
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
       if (target && /INPUT|TEXTAREA|SELECT/.test(target.tagName)) return
@@ -282,11 +347,10 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [last])
+  }, [last, tour])
 
   // -- derived -------------------------------------------------------------
 
-  const layout = useMemo(() => (trace ? layoutTree(trace.nodes) : null), [trace])
   const view = useMemo(() => (trace ? viewAt(trace, index) : null), [trace, index])
   const selectedNode = useMemo(
     () => trace?.nodes.find((n) => n.id === selected) ?? null,
@@ -305,22 +369,49 @@ export default function App() {
         overflow: 'hidden',
       }}
     >
-      <AppBar position="static" elevation={0} sx={{ bgcolor: SURFACE, borderBottom: `1px solid ${STROKE}` }}>
-        <Toolbar variant="dense" sx={{ gap: 1.5, minHeight: 54 }}>
-          <Typography sx={{ fontWeight: 700, color: INK, letterSpacing: '-0.01em' }}>
-            Language Agent Tree Search
-          </Typography>
-          <Typography variant="caption" sx={{ color: INK_FAINT, display: { xs: 'none', md: 'block' } }}>
-            trace viewer
-          </Typography>
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{ bgcolor: SURFACE, borderBottom: `1px solid ${STROKE}` }}
+      >
+        <Toolbar variant="dense" sx={{ gap: 1.5, minHeight: 58, px: { xs: 1.5, md: 2 } }}>
+          <Mark />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              sx={{ fontWeight: 680, color: INK, letterSpacing: '-0.014em', lineHeight: 1.2 }}
+            >
+              Language Agent Tree Search
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: INK_FAINT, display: { xs: 'none', md: 'block' }, lineHeight: 1.2 }}
+            >
+              Trace visualizer · Zhou et al., ICML 2024
+            </Typography>
+          </Box>
           <Box sx={{ flex: 1 }} />
-          <TracePicker
-            sources={sources}
-            current={current}
-            disabled={loading}
-            onSelect={(key) => setCurrent(key)}
-            onUpload={handleFiles}
-          />
+          <Box ref={pickerRef}>
+            <TracePicker
+              sources={sources}
+              current={current}
+              disabled={loading}
+              onSelect={(key) => setCurrent(key)}
+              onUpload={handleFiles}
+            />
+          </Box>
+          <Tooltip title="Show me around" arrow>
+            <span>
+              <IconButton
+                size="small"
+                disabled={!trace}
+                onClick={() => setTour((n) => n + 1)}
+                aria-label="show the tour"
+                sx={{ color: INK_FAINT }}
+              >
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
@@ -337,7 +428,7 @@ export default function App() {
         </Alert>
       )}
 
-      <Box sx={{ flex: 1, minHeight: 0, p: 1.25 }}>
+      <Box sx={{ flex: 1, minHeight: 0, p: 1.5 }}>
         {loading && !trace ? (
           <Centered>
             <CircularProgress size={22} />
@@ -368,48 +459,55 @@ export default function App() {
         ) : (
           <Stack
             direction={narrow ? 'column' : 'row'}
-            spacing={1.25}
+            spacing={1.5}
             sx={{ height: '100%', minHeight: 0 }}
           >
-            <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-              <TraceHeader trace={trace} tokens={step?.tokens ?? 0} />
-              {layout && view && (
+            <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+              <Box ref={headerRef}>
+                <TraceHeader trace={trace} tokens={step?.tokens ?? 0} />
+              </Box>
+              {view && (
                 <TreeView
+                  key={trace.name}
                   trace={trace}
-                  layout={layout}
                   view={view}
                   selected={selected}
                   onSelect={setSelected}
                 />
               )}
-              <Timeline
-                trace={trace}
-                index={index}
-                playing={playing}
-                speed={speed}
-                onIndex={setIndex}
-                onPlaying={setPlaying}
-                onSpeed={setSpeed}
-              />
+              <Box ref={timelineRef}>
+                <Timeline
+                  trace={trace}
+                  index={index}
+                  playing={playing}
+                  speed={speed}
+                  onIndex={setIndex}
+                  onPlaying={setPlaying}
+                  onSpeed={setSpeed}
+                />
+              </Box>
             </Stack>
 
             <Paper
+              ref={panelRef}
               elevation={0}
               sx={{
-                width: narrow ? '100%' : 430,
+                width: narrow ? '100%' : 436,
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: narrow ? 320 : 0,
+                overflow: 'hidden',
               }}
             >
               {step && (
                 <Box
                   sx={{
-                    px: 1.5,
-                    py: 1.25,
+                    px: 1.75,
+                    py: 1.4,
                     borderBottom: `1px solid ${STROKE}`,
                     borderLeft: `3px solid ${OP_COLOR[step.op]}`,
+                    bgcolor: alpha(OP_COLOR[step.op], 0.045),
                   }}
                 >
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
@@ -424,19 +522,17 @@ export default function App() {
                       {step.iteration ? ` · iteration ${step.iteration}` : ''}
                     </Typography>
                   </Stack>
-                  <Typography variant="body2" sx={{ mt: 0.4 }}>
+                  <Typography variant="body2" sx={{ mt: 0.4, color: INK }}>
                     {step.summary}
                   </Typography>
                 </Box>
               )}
 
-              <Box sx={{ flex: 1, overflowY: 'auto', p: 1.5, minHeight: 0 }}>
-                {step && (
-                  <OperationPanel trace={trace} step={step} onSelect={setSelected} />
-                )}
+              <Box sx={{ flex: 1, overflowY: 'auto', p: 1.75, minHeight: 0 }}>
+                {step && <OperationPanel trace={trace} step={step} onSelect={setSelected} />}
                 {selectedNode && (
                   <>
-                    <Divider sx={{ my: 1.5 }} />
+                    <Divider sx={{ my: 1.75 }} />
                     <NodeDetail
                       node={selectedNode}
                       state={view?.state(selectedNode.id)}
@@ -449,6 +545,8 @@ export default function App() {
           </Stack>
         )}
       </Box>
+
+      <Tour key={tour} stops={stops} open={tour > 0 && !!trace} onClose={closeTour} />
 
       <Dialog open={errors !== null} onClose={() => setErrors(null)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pb: 1 }}>That file could not be loaded</DialogTitle>
@@ -472,8 +570,8 @@ export default function App() {
           </Alert>
           <Typography variant="caption" sx={{ color: INK_DIM }}>
             A viewable trace is one of the JSON files written by{' '}
-            <code>python scripts/run_lats.py</code>. The format is documented in
-            the project README and in <code>scripts/run_lats/trace.py</code>.
+            <code>python scripts/run_lats.py</code>. The format is documented in the
+            project README and in <code>scripts/run_lats/trace.py</code>.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -497,7 +595,7 @@ export default function App() {
             zIndex: 1400,
             display: 'grid',
             placeItems: 'center',
-            bgcolor: alpha(BG, 0.86),
+            bgcolor: alpha(BG, 0.9),
             border: `2px dashed ${PRIMARY}`,
           }}
         >
@@ -510,12 +608,22 @@ export default function App() {
   )
 }
 
+/** The three-node glyph the favicon uses, so the tab and the bar agree. */
+function Mark() {
+  return (
+    <Box component="svg" viewBox="0 0 32 32" sx={{ width: 22, height: 22, flexShrink: 0 }}>
+      <path d="M16 10 L7 20 M16 10 L25 20" stroke="#A9B4C4" strokeWidth={2.2} fill="none" />
+      <circle cx={16} cy={6} r={4} fill={PRIMARY} />
+      <circle cx={7} cy={24} r={4} fill="#DC2626" />
+      <circle cx={25} cy={24} r={4} fill="#15803D" />
+    </Box>
+  )
+}
+
 function Centered({ children }: { children: React.ReactNode }) {
   return (
     <Stack
       spacing={1.5}
-     
-     
       sx={{ alignItems: 'center', justifyContent: 'center', height: '100%' }}
     >
       {children}

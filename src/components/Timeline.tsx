@@ -26,7 +26,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import type { Trace } from '../types'
 import { OPS } from '../types'
 import { iterationStarts } from '../lib/layout'
-import { INK, INK_DIM, INK_FAINT, MONO, OP_COLOR, STROKE, alpha } from '../theme'
+import { INK, INK_DIM, INK_FAINT, MONO, OP_COLOR, STROKE, SURFACE_2, alpha } from '../theme'
 
 interface Props {
   trace: Trace
@@ -64,8 +64,8 @@ export default function Timeline({
   )
 
   return (
-    <Paper elevation={0} sx={{ p: 1.25 }}>
-      <Stack direction="row" spacing={0.5} sx={{ mb: 0.5 }}>
+    <Paper elevation={0} sx={{ p: 1.25, overflow: 'hidden' }}>
+      <Stack direction="row" spacing={0.5} sx={{ mb: 0.9 }}>
         {OPS.map((op) => {
           const isNow = step.op === op
           const done = doneThisIteration.has(op)
@@ -76,11 +76,16 @@ export default function Timeline({
                 sx={{
                   flex: 1,
                   px: 0.5,
-                  py: 0.4,
+                  py: 0.45,
                   borderRadius: 0.75,
                   textAlign: 'center',
                   border: `1px solid ${isNow ? color : STROKE}`,
-                  bgcolor: isNow ? alpha(color, 0.2) : done ? alpha(color, 0.07) : 'transparent',
+                  bgcolor: isNow
+                    ? alpha(color, 0.13)
+                    : done
+                      ? alpha(color, 0.055)
+                      : SURFACE_2,
+                  boxShadow: isNow ? `inset 0 0 0 1px ${alpha(color, 0.35)}` : 'none',
                   transition: 'background-color 140ms ease, border-color 140ms ease',
                   minWidth: 0,
                 }}
@@ -90,8 +95,8 @@ export default function Timeline({
                   sx={{
                     fontSize: '0.66rem',
                     fontWeight: isNow ? 700 : 500,
-                    letterSpacing: '0.02em',
-                    color: isNow ? color : done ? alpha(color, 0.85) : INK_FAINT,
+                    letterSpacing: '0.03em',
+                    color: isNow ? color : done ? color : INK_FAINT,
                   }}
                 >
                   {op}
@@ -102,16 +107,16 @@ export default function Timeline({
         })}
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Stack direction="row">
-          <Tooltip title="First step">
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+        <Stack direction="row" sx={{ flexShrink: 0 }}>
+          <Tooltip title="First step  ·  Home">
             <span>
               <IconButton size="small" disabled={index === 0} onClick={() => onIndex(0)}>
                 <FirstPageIcon fontSize="small" />
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Previous step">
+          <Tooltip title="Previous step  ·  ←">
             <span>
               <IconButton
                 size="small"
@@ -122,7 +127,7 @@ export default function Timeline({
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title={playing ? 'Pause' : 'Play'}>
+          <Tooltip title={`${playing ? 'Pause' : 'Play'}  ·  space`}>
             <IconButton
               size="small"
               color="primary"
@@ -131,7 +136,7 @@ export default function Timeline({
               {playing ? <PauseIcon /> : <PlayArrowIcon />}
             </IconButton>
           </Tooltip>
-          <Tooltip title="Next step">
+          <Tooltip title="Next step  ·  →">
             <span>
               <IconButton
                 size="small"
@@ -142,7 +147,7 @@ export default function Timeline({
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Last step">
+          <Tooltip title="Last step  ·  End">
             <span>
               <IconButton
                 size="small"
@@ -167,23 +172,30 @@ export default function Timeline({
             onIndex(v as number)
           }}
           sx={{
+            flex: 1,
+            minWidth: 60,
             mx: 1,
-            '& .MuiSlider-markLabel': { fontSize: '0.62rem', color: INK_FAINT, top: 20 },
-            '& .MuiSlider-mark': { backgroundColor: INK_FAINT, height: 6 },
+            '& .MuiSlider-markLabel': { fontSize: '0.62rem', color: INK_FAINT, top: 21 },
+            '& .MuiSlider-mark': { backgroundColor: '#C4CCD8', height: 6, width: '1px' },
+            '& .MuiSlider-rail': { opacity: 1, backgroundColor: '#DDE3EB' },
           }}
         />
 
-        <Typography
-          sx={{ fontFamily: MONO, fontSize: '0.74rem', color: INK_DIM, width: 92 }}
-        >
-          step {index + 1}/{last + 1}
-        </Typography>
+        <Stack sx={{ flexShrink: 0, textAlign: 'right', minWidth: 96 }}>
+          <Typography sx={{ fontFamily: MONO, fontSize: '0.74rem', color: INK_DIM }}>
+            step {index + 1}/{last + 1}
+          </Typography>
+          <Typography variant="caption" sx={{ color: INK_FAINT, lineHeight: 1.2 }}>
+            iteration {step.iteration || '—'}
+          </Typography>
+        </Stack>
 
         <Select
           size="small"
           value={speed}
           onChange={(e) => onSpeed(Number(e.target.value))}
           sx={{
+            flexShrink: 0,
             fontSize: '0.74rem',
             '& .MuiSelect-select': { py: 0.4, color: INK },
           }}
@@ -196,9 +208,6 @@ export default function Timeline({
         </Select>
       </Stack>
 
-      <Typography variant="caption" sx={{ color: INK_FAINT, pl: 0.5 }}>
-        iteration {step.iteration || '—'} · ← → to step, space to play
-      </Typography>
     </Paper>
   )
 }

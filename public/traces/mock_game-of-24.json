@@ -1,12 +1,12 @@
 {
   "schema": "lats-trace/1",
-  "name": "mock_game_of_24",
+  "name": "mock_game-of-24",
   "generated_by": {
     "package": "run_lats",
     "version": "1.0.0"
   },
   "task": {
-    "id": "game_of_24",
+    "id": "game-of-24",
     "family": "game",
     "title": "Game of 24",
     "prompt": "Use 2, 5, 8, 11 exactly once each, with + - * / and any bracketing, to make 24.",
@@ -963,7 +963,7 @@
       "summary": "Game of 24. The search starts from an empty state; reward is 1 if the final value is exactly 24 and every number was used once, else 0.",
       "detail": {
         "task": {
-          "id": "game_of_24",
+          "id": "game-of-24",
           "family": "game",
           "title": "Game of 24",
           "prompt": "Use 2, 5, 8, 11 exactly once each, with + - * / and any bracketing, to make 24.",

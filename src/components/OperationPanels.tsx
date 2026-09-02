@@ -408,8 +408,8 @@ function ExpansionPanel({ step, onSelect }: PanelProps) {
             sx={{
               border: `1px solid ${STROKE}`,
               borderRadius: 1,
-              p: 1,
-              bgcolor: alpha(SURFACE_2, 0.6),
+              p: 1.15,
+              bgcolor: SURFACE_2,
             }}
           >
             {child.rejected ? (

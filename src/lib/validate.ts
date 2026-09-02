@@ -81,7 +81,7 @@ export function validateTrace(raw: unknown): ParseResult {
       )
     } else if (family === 'lats-trace-manifest') {
       fail(
-        'This is the traces index (manifest.json), not a trace. Pick one of the individual trace files instead.',
+        'This is the traces index (traces-manifest.json), not a trace. Pick one of the individual trace files instead.',
       )
     } else {
       fail(`Unknown schema "${schema}"; expected "${SUPPORTED_SCHEMA}".`)

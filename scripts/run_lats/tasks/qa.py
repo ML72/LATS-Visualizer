@@ -172,9 +172,9 @@ def retrieve(query: str) -> dict[str, str] | None:
 class MultiHopQATask(Task):
     """Answer a two-hop question by retrieving from a small local corpus."""
 
-    id = "multihop_qa"
+    id = "multihop-qa"
     family = "qa"
-    title = "Two-hop question answering with a retrieval tool"
+    title = "Two-hop question answering"
     prompt = QUESTION
     reward_desc = "1 if the answer names the gold venue and year, else 0 (an oracle signal)"
 

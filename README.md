@@ -39,7 +39,7 @@ python -m venv .venv
 source .venv/bin/activate         # macOS / Linux
 pip install -r requirements.txt   # only the video needs these
 
-python scripts/run_lats.py        # a search run, into results/lats_traces/
+python scripts/run_lats.py        # a search run, into results/lats-traces/
 ```
 
 The viewer opens on the traces committed in `public/traces/`, so it has
@@ -84,7 +84,7 @@ on `PATH`. `python scripts/create_video.py --check` reports what it can find.
 │       ├── script.py         writes SCRIPT.txt from the narration and timings
 │       └── parts/            one module per section, narration included
 ├── results/                  everything generated — gitignored
-│   ├── lats_traces/<stamp>/  one directory per search run
+│   ├── lats-traces/<stamp>/  one directory per search run
 │   └── video/<stamp>/        one directory per render
 └── requirements.txt
 ```
@@ -100,26 +100,39 @@ deliberate: `public/traces/` holds the traces the viewer ships with, and
 ```bash
 python scripts/run_lats.py                     # every bundled preset
 python scripts/run_lats.py --list              # tasks and presets
-python scripts/run_lats.py --task game_of_24   # one task, its own defaults
-python scripts/run_lats.py --task game_of_24 --w 0 --seed 3 --name greedy
+python scripts/run_lats.py --task game-of-24   # one task, its own defaults
+python scripts/run_lats.py --task game-of-24 --w 0 --seed 3 --name greedy
 python scripts/run_lats.py --publish           # refresh public/traces/
 ```
 
 Each run writes into its own timestamped directory under
-`results/lats_traces/`, alongside a `manifest.json` indexing what it produced.
-Drop any of those files onto the viewer window to step through it.
+`results/lats-traces/`, laid out exactly like `public/` so the two can be
+diffed file for file:
 
-**Every trace is named for the policy that produced it** — `mock_game_of_24`,
-`openai_game_of_24_hard` — and the prefix comes from `--llm` rather than from
-anything you type, so a trace cannot be mislabelled. Which policy wrote a trace
-is the first thing you want to know about it and the easiest thing to lose
-track of once a few are sitting in a folder.
+```
+results/lats-traces/20260901-041530/
+    traces-manifest.json          an index of what this run produced
+    traces/
+        mock_game-of-24.json …    one file per trace
+```
+
+The index sits *beside* the folder it indexes rather than inside it — every
+file in `traces/` is a trace, so the viewer can list the directory and a script
+can glob it without special-casing a name. Drop any of those files onto the
+viewer window to step through it.
+
+**A trace name is `<policy>_<task>_<variant>`**, where `-` joins the words of
+one phrase and `_` joins the phrases: `mock_game-of-24_no-value` reads as the
+offline policy, on Game of 24, with the value function ablated. The policy
+prefix comes from `--llm` rather than from anything you type, so a trace cannot
+be mislabelled — which policy wrote a trace is the first thing you want to know
+about it and the easiest thing to lose track of once a few are in a folder.
 
 `--publish` regenerates the offline set in `public/traces/` and leaves anything
 else there alone, so a published OpenAI trace survives it. To add one:
 
 ```bash
-python scripts/run_lats.py --task game_of_24_hard --llm openai --publish \
+python scripts/run_lats.py --task game-of-24_hard --llm openai --publish \
     --note "what this trace is for; the picker shows it under the name"
 ```
 
@@ -136,11 +149,11 @@ python scripts/run_lats.py --task game_of_24_hard --llm openai --publish \
 | `--llm` | `mock` (default) or `openai` | — |
 
 Task defaults are applied first and command-line flags override them, so
-`--task merge_intervals` picks up λ = 0.8 and no simulation without being told.
+`--task merge-intervals` picks up λ = 0.8 and no simulation without being told.
 
 ### The four environments
 
-**`merge_intervals`** — write `merge(intervals)` against five visible tests.
+**`merge-intervals`** — write `merge(intervals)` against five visible tests.
 Reward is the fraction that pass, measured by running them in a child process.
 Following the paper's programming setting, every node is already a complete
 program, so simulation is skipped and the test-pass rate is what gets
@@ -148,13 +161,13 @@ backpropagated. The example is a trap: the obvious one-pass sweep looks best to
 the model and caps at three of five, and every refinement of it caps there too.
 The approach itself is the bug, and the fix is a different branch.
 
-**`game_of_24`** — make 24 from `2, 5, 8, 11`, each number used once. Reward is
+**`game-of-24`** — make 24 from `2, 5, 8, 11`, each number used once. Reward is
 1 or 0 and needs no oracle: the arithmetic either lands on 24 or it does not.
 The policy scores a move by how *tidy* the result looks, which is a plausible
 heuristic and frequently wrong. That gap is what backpropagation exists to
 close.
 
-**`game_of_24_hard`** — the same environment on 6, 9, 9, 10, chosen by sweeping
+**`game-of-24_hard`** — the same environment on 6, 9, 9, 10, chosen by sweeping
 every four-number puzzle for the one that punishes a value function hardest.
 Every solution ends `9 + 15`, and the only ways to reach 15 are a fraction or
 `9 * 10 = 90` — a number far past the target. The heuristic's **twelve
@@ -168,7 +181,7 @@ Deliberately not one of the famous hard puzzles (3-3-8-8, 1-3-4-6, 1-5-5-5) —
 a capable model has those memorised and answers from recall instead of
 searching, which teaches nothing.
 
-**`multihop_qa`** — a ReAct-shaped loop (`search[term]`, `finish[answer]`) over
+**`multihop-qa`** — a ReAct-shaped loop (`search[term]`, `finish[answer]`) over
 a small corpus. The question asks which venue published the paper that
 *introduced* the algorithm LATS adapts; the corpus also holds a 2006 paper about
 the selection *rule* that algorithm uses, published elsewhere, and the policy
@@ -176,19 +189,29 @@ has a recency bias that walks straight into it.
 
 ### The traces the viewer ships with
 
-Every trace is named for the policy that wrote it. The offline set is
-reproducible and needs no key — `python scripts/run_lats.py --publish`
-regenerates it byte for byte:
+The picker groups them by environment and, inside an environment, puts the
+offline policy before a real model and a run that worked before one that did
+not — so the viewer opens on a search that succeeds rather than on an ablation
+that fails. The offline set is reproducible and needs no key;
+`python scripts/run_lats.py --publish` regenerates it byte for byte:
 
 | trace | solved | nodes | steps | what it is for |
 |---|---|---|---|---|
-| `mock_merge_intervals` | yes | 5 | 13 | the programming setting, simulation skipped |
-| `mock_game_of_24` | yes | 45 | 31 | all six operations, including a real rollout |
-| `mock_game_of_24_no_value` | yes | 68 | 74 | ablation: λ = 0, self-consistency only |
-| `mock_game_of_24_greedy` | **no** | 64 | 74 | ablation: w = 0, exploitation only |
-| `mock_game_of_24_hard` | **no** | 75 | 98 | the hard puzzle, and why more search does not help |
-| `mock_multihop_qa` | yes | 14 | 13 | two-hop retrieval with a distractor |
-| `mock_multihop_qa_no_reflection` | yes | 14 | 12 | ablation: reflection off |
+| `mock_game-of-24` | yes | 45 | 31 | all six operations, including a real rollout |
+| `mock_game-of-24_no-value` | yes* | 68 | 74 | ablation: λ = 0, self-consistency only |
+| `mock_game-of-24_greedy` | **no** | 64 | 74 | ablation: w = 0, exploitation only |
+| `mock_merge-intervals` | yes | 5 | 13 | the programming setting, simulation skipped |
+| `mock_multihop-qa` | yes | 14 | 13 | two-hop retrieval with a distractor |
+| `mock_multihop-qa_no-reflection` | yes | 14 | 12 | ablation: reflection off |
+| `mock_game-of-24_hard` | **no** | 75 | 98 | the hard puzzle, and why more search does not help |
+
+\* `mock_game-of-24_no-value` is solved only in the bookkeeping sense. A
+winning node is *built* on iteration 1, as a by-product of a rollout, and
+selection never walks back into it: all twelve iterations backpropagate a
+reward of 0 and the run stops on its budget, not on a solution. The final
+`solved` flag comes from a scan over every node that carries a reward, which is
+worth reading as its own small lesson — a search can contain an answer it never
+noticed.
 
 The rest came out of a real model. They are **not** reproducible — a rerun
 gives a different tree — which is exactly why they are checked in rather than
@@ -196,32 +219,34 @@ regenerated:
 
 | trace | model | solved | nodes | steps | what it is for |
 |---|---|---|---|---|---|
-| `openai_game_of_24` | gpt-5 | yes | 16 | 7 | the short one: a strong policy needs no search at all |
-| `openai_multihop_qa` | gpt-5 | yes | 13 | 13 | the whole loop in thirteen steps: wrong commit, reflection, recovery |
-| `openai_game_of_24_hard` | gpt-5 | **no** | 110 | 98 | the long one: sixteen iterations of correct search over a tree that cannot contain the answer |
-| `openai_game_of_24_hard_wide` | gpt-5 | yes | 151 | 49 | the same, with `--n 12`: one winning move gets proposed, and the search finds it |
+| `openai_game-of-24` | gpt-5 | yes | 16 | 7 | the short one: a strong policy needs no search at all |
+| `openai_multihop-qa` | gpt-5 | yes | 13 | 13 | the whole loop in thirteen steps: wrong commit, reflection, recovery |
+| `openai_game-of-24_hard` | gpt-5 | **no** | 110 | 98 | the long one: sixteen iterations of correct search over a tree that cannot contain the answer |
+| `openai_game-of-24_hard_wide` | gpt-5 | yes | 151 | 49 | the same, with `--n 12`: one winning move gets proposed, and the search finds it |
 
 Three things worth saying to a class.
 
-**Reflection matters least.** Turning it off changes nothing on `multihop_qa`,
+**Reflection matters least.** Turning it off changes nothing on `multihop-qa`,
 which matches the paper's own ablation, where reflection is the smallest of its
 three (−0.05 exact match against −0.26 for the value function and −0.21 for the
 search).
 
 **Which term dominates is a property of the task, not a law.** On Game of 24 the
-ordering is *reversed* from the paper's HotPotQA result: removing exploration
-(`w = 0`) breaks the search outright while removing the model's self-evaluation
-(`λ = 0`) only makes it slower.
+ordering is *reversed* from the paper's HotPotQA result. Removing exploration
+(`w = 0`) breaks the search outright. Removing the model's self-evaluation
+(`λ = 0`) leaves a search that still reaches a solution but can no longer
+recognise one: it builds the winning node and walks past it, and spends every
+iteration it has backpropagating zeros.
 
 **Search cannot repair the policy — but sample width can.** Read the three
-`game_of_24_hard` traces in order. `mock_game_of_24_hard` and
-`openai_game_of_24_hard` are the same puzzle, and a naive arithmetic heuristic
+`game-of-24_hard` traces in order. `mock_game-of-24_hard` and
+`openai_game-of-24_hard` are the same puzzle, and a naive arithmetic heuristic
 and a frontier reasoning model fail it the same way: both expand the root into
 five tidy-looking moves, and neither set contains any of the five moves that can
 reach 24. Selection, backpropagation and reflection then run flawlessly for
 sixteen iterations over a tree with no solution in it.
 
-`openai_game_of_24_hard_wide` moves exactly one knob — `--n 12` instead of 5 —
+`openai_game-of-24_hard_wide` moves exactly one knob — `--n 12` instead of 5 —
 and `9 * 10 = 90` finally appears among the root's children. It is the *least*
 attractive of the twelve, and it sits at the bottom of the exploitation column
 for seven iterations while the search works through `6*9`, `9/9`, `6+10`,
@@ -245,7 +270,7 @@ cp .env.example .env                    # then fill in OPENAI_API_KEY
 export OPENAI_API_KEY=sk-...            # or macOS / Linux
 $env:OPENAI_API_KEY = 'sk-...'          # or PowerShell
 
-python scripts/run_lats.py --task game_of_24_hard --llm openai
+python scripts/run_lats.py --task game-of-24_hard --llm openai
 ```
 
 Anything already exported wins over `.env`, and only the variable *names* are
@@ -258,13 +283,13 @@ non-reasoning model works without any extra flag. `OPENAI_BASE_URL` points the
 client at a compatible endpoint instead — a local server or a gateway — in which
 case the key may not be needed at all.
 
-The environment keeps the last word. On `game_of_24` a step the model invented,
+The environment keeps the last word. On `game-of-24` a step the model invented,
 one using a number that is not on the board, is rejected before it reaches the
 tree, and the result is recomputed rather than taken from the reply: `2 * 11 =
 21` is accepted as the move and still lands on 22.
 
 > **Two warnings.** Traces produced this way are not reproducible. And on
-> `merge_intervals` the environment executes whatever program the model wrote.
+> `merge-intervals` the environment executes whatever program the model wrote.
 > That runs in a separate process with a timeout, which bounds a runaway loop —
 > it is **not** a sandbox and does not contain hostile code. The offline policy
 > only ever proposes programs written in `code_task.py`, so this applies to
@@ -291,15 +316,32 @@ npm run lint             # oxlint
 npx tsc -b               # typecheck only
 ```
 
-React 19 · TypeScript · Vite · MUI. Nothing is loaded from a remote host. The
-palette is ported from `scripts/create_video/theme.py`, so the viewer and the
-video read as one piece of work: blue for the algorithm, amber for whatever you
-should be looking at, green for high value, red for failure, violet for
-reflection, teal for the environment.
+React 19 · TypeScript · Vite · MUI. Nothing is loaded from a remote host.
 
+The viewer is light and the video is dark, because they are read in different
+places — one next to a paper, projected in a lit room and screenshotted into
+slides, the other on a screen in the dark. What they share is the colour
+*grammar*, retuned in `src/theme.ts` for a light ground: blue for the
+algorithm, amber for whatever you should be looking at, green for high value,
+red for failure, violet for reflection, teal for the environment. Every hue
+clears 4.5:1 against both the page and a card, so a number that carries meaning
+is never the faint one on the screen.
+
+- **Introduces itself.** A four-stop tour on load points at the trace picker,
+  the task and its settings, the transport, and the explanation panel. It runs
+  once per page load and nothing about it is remembered between visits — this
+  is a demo people arrive at cold, and skipping it costs one click. The `?` in
+  the app bar replays it.
 - **Replays a trace one operation at a time.** Play, scrub, `←`/`→` to step,
   space to pause, `Home`/`End` to jump. The tree grows as the search grew; node
   fill is the value ramp and the ring is the objective reward.
+- **Frames the step, not the whole tree.** The tree is laid out from the nodes
+  that exist at the current step and the camera follows the operation being
+  explained, so a forty-five node search stays readable from its first step
+  instead of being drawn at the zoom its last step needs. Pan or zoom and the
+  camera hands over; the crosshair gives it back, and the arrows button fits
+  the whole tree. Below the zoom at which a label is worth drawing, nodes
+  become value-coloured tiles and the tree reads as a shape.
 - **Shows the arithmetic behind each operation.** Selection draws the UCT
   tug-of-war as stacked bars — exploitation against the exploration bonus —
   with a live `w` slider; drag it and the winning branch can flip. Evaluation
@@ -312,8 +354,10 @@ reflection, teal for the environment.
   A rejected file gets every problem found, not just the first, each with a path
   into the document.
 
-`public/traces/` is Vite's static directory, so those traces are served at
-`/traces/` in development and copied into `dist/traces/` by a build.
+`public/` is Vite's static directory, so the bundled traces are served at
+`/traces/` in development and copied into `dist/traces/` by a build, with
+`traces-manifest.json` served beside them. The picker reads that index for its
+grouping, its ordering and the one-line note under each name.
 
 **Changing it.** `src/theme.ts` holds the palette, the type scale and the value
 ramp; it mirrors `scripts/create_video/theme.py`, so change them together or the
@@ -398,7 +442,7 @@ whole contract.
 ```jsonc
 {
   "schema": "lats-trace/1",
-  "name":   "game_of_24",
+  "name":   "mock_game-of-24",
   "task":   { "id", "family", "title", "prompt", "reward", "context" },
   "config": { "n", "w", "lambda", "iterations", "max_depth", "simulate",
               "reflect", "solved_at", "seed" },
