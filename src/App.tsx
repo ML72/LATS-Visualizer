@@ -9,6 +9,15 @@
  * served as static files under /traces/ and indexed by `traces-manifest.json`
  * beside that folder; anything the user drops on the window is validated and
  * held in memory for the session.
+ *
+ * **One app, laid out three ways.** On a desktop the tree and the panel sit
+ * side by side, because reading the explanation while watching the tree is the
+ * whole point. Narrow and tall - a tablet held upright - stacks them instead.
+ * Below about a phone's width there is no honest way to show both at once, so
+ * they become two tabs over a shared transport: the tree keeps every pixel it
+ * can get, and tapping a node moves you to its detail rather than shrinking
+ * both. Which of the three is in play is a separate question from how much
+ * room the chrome may take, and the code keeps them separate.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -27,11 +36,15 @@ import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
 import Toolbar from '@mui/material/Toolbar'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
+import DarkModeIcon from '@mui/icons-material/DarkModeOutlined'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined'
+import LightModeIcon from '@mui/icons-material/LightModeOutlined'
 
 import NodeDetail from './components/NodeDetail'
 import OperationPanel from './components/OperationPanels'
@@ -44,7 +57,10 @@ import { viewAt } from './lib/layout'
 import { readTraceFile, validateManifest, validateTrace } from './lib/validate'
 import type { Trace } from './types'
 import {
+  BAD,
   BG,
+  EDGE,
+  GOOD,
   INK,
   INK_DIM,
   INK_FAINT,
@@ -54,6 +70,7 @@ import {
   STROKE,
   SURFACE,
   alpha,
+  useColorMode,
 } from './theme'
 
 /** Milliseconds per step at 1x. Slow enough to read the panel. */
@@ -65,6 +82,9 @@ const TRACES = 'traces/'
 const MANIFEST = 'traces-manifest.json'
 
 const url = (file: string) => new URL(file, document.baseURI).href
+
+/** Which half of the app a phone is looking at. */
+type Pane = 'tree' | 'step'
 
 export default function App() {
   const [sources, setSources] = useState<Source[]>([])
@@ -81,6 +101,7 @@ export default function App() {
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [selected, setSelected] = useState<number | null>(null)
+  const [pane, setPane] = useState<Pane>('tree')
   const [dragging, setDragging] = useState(false)
   const dragDepth = useRef(0)
 
@@ -91,7 +112,26 @@ export default function App() {
   const timelineRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
+  const { mode, toggle } = useColorMode()
+
+  // Two questions, not one. *Is this a phone-sized screen* decides the chrome:
+  // a folded-up header, a scrubber over two rows, an upload button with no
+  // room for its label. *Is it too narrow for two columns* decides whether the
+  // tree and the panel have to take turns. A handset held sideways answers yes
+  // to the first and no to the second - it has width to spare and no height at
+  // all - so it gets the small-screen chrome beside a side-by-side layout.
+  const slim = useMediaQuery('(max-width: 700px)')
+  // Bounded by width too, so that a short desktop window - a laptop with the
+  // browser half the screen tall - keeps the layout it has.
+  const short = useMediaQuery('(max-height: 560px) and (max-width: 900px)')
+  const compact = slim || short
+  const tabbed = slim
+
   const narrow = useMediaQuery('(max-width: 1100px)')
+  // A tablet on its side has the width for two columns even though it is under
+  // the narrow threshold, and stacking there wastes it.
+  const sideways = useMediaQuery('(min-width: 900px) and (min-aspect-ratio: 5/4)')
+  const stacked = narrow && !sideways && !compact
 
   // -- bundled traces ------------------------------------------------------
 
@@ -186,6 +226,7 @@ export default function App() {
     setIndex(0)
     setSelected(null)
     setPlaying(false)
+    setPane('tree')
     setLoading(false)
   }
 
@@ -359,10 +400,133 @@ export default function App() {
 
   const step = view?.step
 
+  // Where a node's detail is going to appear is the other tab on a phone, so
+  // picking one has to take you there; nothing else about selection changes.
+  const select = useCallback(
+    (id: number | null) => {
+      setSelected(id)
+      if (tabbed && id !== null) setPane('step')
+    },
+    [tabbed],
+  )
+
+  const gap = compact ? 1 : 1.5
+
+  const header = trace && (
+    <Box ref={headerRef}>
+      <TraceHeader trace={trace} tokens={step?.tokens ?? 0} compact={compact} />
+    </Box>
+  )
+
+  const tree = trace && view && (
+    <TreeView
+      key={trace.name}
+      trace={trace}
+      view={view}
+      selected={selected}
+      onSelect={select}
+      // A phone in landscape has to buy the transport its row out of this one.
+      minHeight={compact ? 120 : stacked ? 160 : 280}
+    />
+  )
+
+  const timeline = trace && (
+    <Box ref={timelineRef}>
+      <Timeline
+        trace={trace}
+        index={index}
+        playing={playing}
+        speed={speed}
+        onIndex={setIndex}
+        onPlaying={setPlaying}
+        onSpeed={setSpeed}
+        compact={compact}
+        short={short}
+      />
+    </Box>
+  )
+
+  const panel = trace && (
+    <Paper
+      ref={panelRef}
+      elevation={0}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        ...(tabbed
+          ? { width: '100%', flex: 1, minHeight: 0 }
+          : stacked
+            ? // A share of the column rather than a floor, so the pair always
+              // fits the window however short it is.
+              { width: '100%', flex: '1 1 0', minHeight: 180 }
+            : // Narrower beside a handset in landscape: there the tree is the
+              // half that has nowhere else to go.
+              { width: compact ? 340 : 436, flexShrink: 0, minHeight: 0 }),
+      }}
+    >
+      {step && (
+        <Box
+          sx={{
+            px: 1.75,
+            py: 1.4,
+            borderBottom: `1px solid ${STROKE}`,
+            borderLeft: `3px solid ${OP_COLOR[step.op]}`,
+            bgcolor: alpha(OP_COLOR[step.op], 0.045),
+          }}
+        >
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+            <Typography
+              variant="subtitle2"
+              sx={{ color: OP_COLOR[step.op], textTransform: 'uppercase' }}
+            >
+              {step.op}
+            </Typography>
+            <Typography variant="caption" sx={{ color: INK_FAINT, fontFamily: MONO }}>
+              step {step.index + 1}
+              {step.iteration ? ` · iteration ${step.iteration}` : ''}
+            </Typography>
+          </Stack>
+          <Typography variant="body2" sx={{ mt: 0.4, color: INK }}>
+            {step.summary}
+          </Typography>
+        </Box>
+      )}
+
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 1.75, minHeight: 0 }}>
+        {step && trace && <OperationPanel trace={trace} step={step} onSelect={select} />}
+        {selectedNode && (
+          <>
+            <Divider sx={{ my: 1.75 }} />
+            <NodeDetail
+              node={selectedNode}
+              state={view?.state(selectedNode.id)}
+              onClose={() => setSelected(null)}
+            />
+          </>
+        )}
+      </Box>
+    </Paper>
+  )
+
+  const picker = (
+    <TracePicker
+      sources={sources}
+      current={current}
+      disabled={loading}
+      onSelect={(key) => setCurrent(key)}
+      onUpload={handleFiles}
+      compact={compact}
+    />
+  )
+
   return (
     <Box
       sx={{
         height: '100vh',
+        // Phone browsers count the collapsing address bar as viewport height,
+        // which puts the transport under it until you scroll something.
+        '@supports (height: 100dvh)': { height: '100dvh' },
         display: 'flex',
         flexDirection: 'column',
         bgcolor: BG,
@@ -374,10 +538,17 @@ export default function App() {
         elevation={0}
         sx={{ bgcolor: SURFACE, borderBottom: `1px solid ${STROKE}` }}
       >
-        <Toolbar variant="dense" sx={{ gap: 1.5, minHeight: 58, px: { xs: 1.5, md: 2 } }}>
+        <Toolbar
+          variant="dense"
+          sx={{ gap: 1.5, minHeight: compact ? 52 : 58, px: { xs: 1.5, md: 2 } }}
+        >
           <Mark />
           <Box sx={{ minWidth: 0 }}>
+            {/* Truncated rather than wrapped where the bar is tight, which
+                would otherwise push the whole app down a line. Off on a wide
+                bar: `overflow: hidden` clips a descender by a pixel. */}
             <Typography
+              noWrap={compact || stacked}
               sx={{ fontWeight: 680, color: INK, letterSpacing: '-0.014em', lineHeight: 1.2 }}
             >
               Language Agent Tree Search
@@ -390,15 +561,23 @@ export default function App() {
             </Typography>
           </Box>
           <Box sx={{ flex: 1 }} />
-          <Box ref={pickerRef}>
-            <TracePicker
-              sources={sources}
-              current={current}
-              disabled={loading}
-              onSelect={(key) => setCurrent(key)}
-              onUpload={handleFiles}
-            />
-          </Box>
+          {/* Wide enough for the picker: it belongs beside the title. On a
+              phone it gets a row of its own, below. */}
+          {!tabbed && <Box ref={pickerRef}>{picker}</Box>}
+          <Tooltip title={mode === 'dark' ? 'Switch to light' : 'Switch to dark'} arrow>
+            <IconButton
+              size="small"
+              onClick={toggle}
+              aria-label={mode === 'dark' ? 'switch to light mode' : 'switch to dark mode'}
+              sx={{ color: INK_FAINT }}
+            >
+              {mode === 'dark' ? (
+                <LightModeIcon fontSize="small" />
+              ) : (
+                <DarkModeIcon fontSize="small" />
+              )}
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Show me around" arrow>
             <span>
               <IconButton
@@ -413,6 +592,12 @@ export default function App() {
             </span>
           </Tooltip>
         </Toolbar>
+
+        {tabbed && (
+          <Box ref={pickerRef} sx={{ px: 1.5, pb: 1 }}>
+            {picker}
+          </Box>
+        )}
       </AppBar>
 
       {warnings.length > 0 && (
@@ -428,7 +613,11 @@ export default function App() {
         </Alert>
       )}
 
-      <Box sx={{ flex: 1, minHeight: 0, p: 1.5 }}>
+      {/* Everything below the bar fits the window at any size a phone comes
+          in. Smaller than that - a tiny browser window, a handset from before
+          they got tall, turned sideways - it scrolls rather than folding the
+          transport under the tree. */}
+      <Box sx={{ flex: 1, minHeight: 0, p: gap, overflowY: compact ? 'auto' : 'hidden' }}>
         {loading && !trace ? (
           <Centered>
             <CircularProgress size={22} />
@@ -456,99 +645,68 @@ export default function App() {
               />
             </Button>
           </Centered>
+        ) : tabbed ? (
+          <Stack spacing={1} sx={{ minHeight: '100%' }}>
+            {header}
+            <Paper elevation={0} sx={{ flexShrink: 0, overflow: 'hidden' }}>
+              <Tabs
+                value={pane}
+                onChange={(_, next: Pane) => setPane(next)}
+                variant="fullWidth"
+                sx={{ minHeight: 38 }}
+              >
+                <Tab value="tree" label="Tree" sx={TAB_SX} />
+                <Tab
+                  value="step"
+                  sx={TAB_SX}
+                  label={
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                      <Box
+                        sx={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: '50%',
+                          bgcolor: step ? OP_COLOR[step.op] : INK_FAINT,
+                        }}
+                      />
+                      <span>Step{selectedNode ? ` · #${selectedNode.id}` : ''}</span>
+                    </Stack>
+                  }
+                />
+              </Tabs>
+            </Paper>
+            {/* Both panes are mounted only one at a time: the tree measures
+                itself to lay out, and a hidden pane measures zero. */}
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
+              {pane === 'tree' ? tree : panel}
+            </Box>
+            {timeline}
+          </Stack>
         ) : (
           <Stack
-            direction={narrow ? 'column' : 'row'}
-            spacing={1.5}
+            direction={stacked ? 'column' : 'row'}
+            spacing={gap}
             sx={{ height: '100%', minHeight: 0 }}
           >
-            <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-              <Box ref={headerRef}>
-                <TraceHeader trace={trace} tokens={step?.tokens ?? 0} />
-              </Box>
-              {view && (
-                <TreeView
-                  key={trace.name}
-                  trace={trace}
-                  view={view}
-                  selected={selected}
-                  onSelect={setSelected}
-                />
-              )}
-              <Box ref={timelineRef}>
-                <Timeline
-                  trace={trace}
-                  index={index}
-                  playing={playing}
-                  speed={speed}
-                  onIndex={setIndex}
-                  onPlaying={setPlaying}
-                  onSpeed={setSpeed}
-                />
-              </Box>
+            <Stack spacing={gap} sx={{ flex: stacked ? 1.6 : 1, minWidth: 0, minHeight: 0 }}>
+              {header}
+              {tree}
+              {timeline}
             </Stack>
-
-            <Paper
-              ref={panelRef}
-              elevation={0}
-              sx={{
-                width: narrow ? '100%' : 436,
-                flexShrink: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: narrow ? 320 : 0,
-                overflow: 'hidden',
-              }}
-            >
-              {step && (
-                <Box
-                  sx={{
-                    px: 1.75,
-                    py: 1.4,
-                    borderBottom: `1px solid ${STROKE}`,
-                    borderLeft: `3px solid ${OP_COLOR[step.op]}`,
-                    bgcolor: alpha(OP_COLOR[step.op], 0.045),
-                  }}
-                >
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ color: OP_COLOR[step.op], textTransform: 'uppercase' }}
-                    >
-                      {step.op}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: INK_FAINT, fontFamily: MONO }}>
-                      step {step.index + 1}
-                      {step.iteration ? ` · iteration ${step.iteration}` : ''}
-                    </Typography>
-                  </Stack>
-                  <Typography variant="body2" sx={{ mt: 0.4, color: INK }}>
-                    {step.summary}
-                  </Typography>
-                </Box>
-              )}
-
-              <Box sx={{ flex: 1, overflowY: 'auto', p: 1.75, minHeight: 0 }}>
-                {step && <OperationPanel trace={trace} step={step} onSelect={setSelected} />}
-                {selectedNode && (
-                  <>
-                    <Divider sx={{ my: 1.75 }} />
-                    <NodeDetail
-                      node={selectedNode}
-                      state={view?.state(selectedNode.id)}
-                      onClose={() => setSelected(null)}
-                    />
-                  </>
-                )}
-              </Box>
-            </Paper>
+            {panel}
           </Stack>
         )}
       </Box>
 
       <Tour key={tour} stops={stops} open={tour > 0 && !!trace} onClose={closeTour} />
 
-      <Dialog open={errors !== null} onClose={() => setErrors(null)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={errors !== null}
+        onClose={() => setErrors(null)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={compact}
+      >
         <DialogTitle sx={{ pb: 1 }}>That file could not be loaded</DialogTitle>
         <DialogContent>
           <Alert severity="error" variant="outlined" sx={{ mb: 1.5 }}>
@@ -608,14 +766,28 @@ export default function App() {
   )
 }
 
-/** The three-node glyph the favicon uses, so the tab and the bar agree. */
+/** Short enough to leave the tree its height, tall enough to hit with a thumb. */
+const TAB_SX = { minHeight: 38, py: 0, fontSize: '0.8rem' }
+
+/**
+ * The three-node glyph the favicon uses, so the tab and the bar agree.
+ *
+ * Painted from the tokens rather than the favicon's literals - identical in
+ * light, and lifted off the bar in dark. As everywhere a token reaches SVG,
+ * the colours go through `style` rather than the `fill` attribute, because a
+ * presentation attribute is not a place every browser resolves `var()`.
+ */
 function Mark() {
   return (
     <Box component="svg" viewBox="0 0 32 32" sx={{ width: 22, height: 22, flexShrink: 0 }}>
-      <path d="M16 10 L7 20 M16 10 L25 20" stroke="#A9B4C4" strokeWidth={2.2} fill="none" />
-      <circle cx={16} cy={6} r={4} fill={PRIMARY} />
-      <circle cx={7} cy={24} r={4} fill="#DC2626" />
-      <circle cx={25} cy={24} r={4} fill="#15803D" />
+      <path
+        d="M16 10 L7 20 M16 10 L25 20"
+        strokeWidth={2.2}
+        style={{ stroke: EDGE, fill: 'none' }}
+      />
+      <circle cx={16} cy={6} r={4} style={{ fill: PRIMARY }} />
+      <circle cx={7} cy={24} r={4} style={{ fill: BAD }} />
+      <circle cx={25} cy={24} r={4} style={{ fill: GOOD }} />
     </Box>
   )
 }

@@ -27,6 +27,10 @@
  * its name at a fixed size on screen, truncated to fit, and only becomes a bare
  * value-coloured tile once even that will not fit. Detail is given up one piece
  * at a time; nothing about the tree ever blanks all at once.
+ *
+ * Every colour reaches the SVG through `style` rather than through `fill` and
+ * `stroke` attributes: the palette is a set of CSS variables, and a
+ * presentation attribute is not somewhere every browser resolves `var()`.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -36,6 +40,7 @@ import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong'
@@ -62,8 +67,12 @@ import {
   valueColor,
 } from '../theme'
 
-/** Breathing room around the framed nodes, in screen pixels. */
+/** Breathing room around the framed nodes, in screen pixels. On a canvas as
+    narrow as a phone's this is most of the width, so it is a share of the
+    canvas there and this figure only on anything bigger. */
 const PAD = 40
+const PAD_SHARE = 0.06
+const PAD_MIN = 12
 /** Never magnify past this: three nodes should read as a small tree, not as
     three billboards. */
 const MAX_SCALE = 1.2
@@ -73,6 +82,9 @@ const MIN_FRAME_W = NODE_W * 4.5
 const MIN_FRAME_H = NODE_H * 5
 /** Above this scale a node carries its whole card: name, V, N, id, reward. */
 const DETAIL_SCALE = 0.72
+/** What the framing floor relaxes to when the canvas cannot afford it: enough
+    over the threshold above that no rounding decides whether a card is drawn. */
+const DETAIL_TARGET = DETAIL_SCALE * 1.05
 /** Between the two, a node keeps only its name, held at a fixed size on screen
     and truncated to whatever the card can still hold. Below the lower bound
     even three characters will not fit, so the node becomes a value-coloured
@@ -83,12 +95,22 @@ const LABEL_PX = 10
 /** Rough advance width of the sans face, as a fraction of its size. Used only
     to decide how much of a name fits; being a little conservative is fine. */
 const CHAR_W = 0.56
+/** Narrower than this and the overlays start standing on each other, so the
+    legend keeps its ramp and drops its swatches. Shorter than the second and
+    it stands on the tree itself, so it goes entirely: a handset on its side
+    has room for the nodes or for the key, and the nodes are the subject. */
+const TIGHT_W = 520
+const TIGHT_H = 200
+/** How far a pointer may travel and still count as a click on a node. */
+const SLOP = 3
 
 interface Props {
   trace: Trace
   view: View
   selected: number | null
   onSelect: (id: number | null) => void
+  /** How little vertical room the pane may be given before it insists. */
+  minHeight?: number
 }
 
 interface Camera {
@@ -105,13 +127,31 @@ interface Frame {
   h: number
 }
 
-export default function TreeView({ trace, view, selected, onSelect }: Props) {
+interface Point {
+  x: number
+  y: number
+}
+
+export default function TreeView({
+  trace,
+  view,
+  selected,
+  onSelect,
+  minHeight = 280,
+}: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 900, h: 520 })
   const [camera, setCamera] = useState<Camera | null>(null)
   /** True once the user has taken the camera: it stops following the search. */
   const [free, setFree] = useState(false)
   const drag = useRef<{ x: number; y: number; cam: Camera } | null>(null)
+  /** Every finger currently down, so two of them can be read as a pinch. */
+  const pointers = useRef(new Map<number, Point>())
+  const pinch = useRef<{ dist: number; mid: Point; cam: Camera } | null>(null)
+  /** Set once a gesture has travelled far enough to be a pan, not a tap. */
+  const panned = useRef(false)
+
+  const coarse = useMediaQuery('(pointer: coarse)')
 
   useEffect(() => {
     const el = wrapRef.current
@@ -174,9 +214,18 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
 
   const frame = useCallback(
     (b: Frame): Camera => {
+      const pad = Math.min(PAD, Math.max(PAD_MIN, size.w * PAD_SHARE))
+      const room = (px: number) => Math.max(1, px - pad * 2)
+      // The floor stops a step about one node from filling the pane with it.
+      // On a phone-wide canvas, though, four and a half cards of framing is
+      // exactly what would push every node below the size at which it carries
+      // its own numbers, so the floor never asks for more than the canvas can
+      // show at full detail. A frame is still never smaller than its contents.
+      const floor = (want: number, px: number) =>
+        Math.min(want, room(px) / DETAIL_TARGET)
       const scale = Math.min(
-        Math.max(1, size.w - PAD * 2) / Math.max(b.w, MIN_FRAME_W),
-        Math.max(1, size.h - PAD * 2) / Math.max(b.h, MIN_FRAME_H),
+        room(size.w) / Math.max(b.w, floor(MIN_FRAME_W, size.w)),
+        room(size.h) / Math.max(b.h, floor(MIN_FRAME_H, size.h)),
         MAX_SCALE,
       )
       return {
@@ -195,16 +244,89 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
   // In user units, so the drawn size stays constant as the canvas scales.
   const labelFont = LABEL_PX / cam.scale
   const labelRoom = Math.floor((NODE_W - 14) / (labelFont * CHAR_W))
+  const tight = size.w < TIGHT_W
 
   const take = (next: Camera) => {
     setCamera(next)
     setFree(true)
   }
 
+  /** Where a client point falls inside the canvas. */
+  const local = (x: number, y: number): Point => {
+    const rect = wrapRef.current?.getBoundingClientRect()
+    return { x: x - (rect?.left ?? 0), y: y - (rect?.top ?? 0) }
+  }
+
+  const zoomTo = (scale: number, at: Point, from: Camera, anchor: Point) => {
+    const k = Math.min(Math.max(scale, 0.05), 3) / from.scale
+    take({
+      scale: from.scale * k,
+      x: at.x - (anchor.x - from.x) * k,
+      y: at.y - (anchor.y - from.y) * k,
+    })
+  }
+
   const zoomBy = (factor: number, cx = size.w / 2, cy = size.h / 2) => {
-    const scale = Math.min(Math.max(cam.scale * factor, 0.05), 3)
-    const k = scale / cam.scale
-    take({ scale, x: cx - (cx - cam.x) * k, y: cy - (cy - cam.y) * k })
+    zoomTo(cam.scale * factor, { x: cx, y: cy }, cam, { x: cx, y: cy })
+  }
+
+  const two = (): [Point, Point] => {
+    const [a, b] = [...pointers.current.values()]
+    return [a, b]
+  }
+
+  const startPinch = () => {
+    const [a, b] = two()
+    const mid = local((a.x + b.x) / 2, (a.y + b.y) / 2)
+    pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid, cam }
+    drag.current = null
+  }
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    panned.current = false
+    if (pointers.current.size === 2) {
+      startPinch()
+      return
+    }
+    if (pointers.current.size > 2) return
+    drag.current = { x: e.clientX, y: e.clientY, cam }
+    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+  }
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (pointers.current.has(e.pointerId)) {
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
+
+    // Two fingers: the point the canvas was pinched at stays under them, so
+    // the same gesture zooms and pans.
+    const p = pinch.current
+    if (p && pointers.current.size >= 2) {
+      panned.current = true
+      const [a, b] = two()
+      const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1
+      zoomTo(p.cam.scale * (dist / p.dist), local((a.x + b.x) / 2, (a.y + b.y) / 2), p.cam, p.mid)
+      return
+    }
+
+    const d = drag.current
+    if (!d) return
+    // A press that never moved is a click, not a pan: the camera keeps
+    // following until the pointer has actually travelled.
+    if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) < SLOP) return
+    panned.current = true
+    take({
+      scale: d.cam.scale,
+      x: d.cam.x + (e.clientX - d.x),
+      y: d.cam.y + (e.clientY - d.y),
+    })
+  }
+
+  const onPointerEnd = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size < 2) pinch.current = null
+    if (pointers.current.size === 0) drag.current = null
   }
 
   const visibleIds = useMemo(
@@ -247,43 +369,26 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
       sx={{
         position: 'relative',
         flex: 1,
-        minHeight: 280,
+        minHeight,
         overflow: 'hidden',
         bgcolor: SURFACE,
         backgroundImage: `radial-gradient(${alpha(EDGE, 0.42)} 1px, transparent 1px)`,
         backgroundSize: '22px 22px',
         cursor: 'grab',
+        // The canvas takes every touch itself: without this a drag scrolls the
+        // page instead of panning, and a pinch zooms the whole document.
+        touchAction: 'none',
+        userSelect: 'none',
         '&:active': { cursor: 'grabbing' },
       }}
-      onPointerDown={(e) => {
-        drag.current = { x: e.clientX, y: e.clientY, cam }
-        ;(e.target as Element).setPointerCapture?.(e.pointerId)
-      }}
-      onPointerMove={(e) => {
-        const d = drag.current
-        if (!d) return
-        // A press that never moved is a click, not a pan: the camera keeps
-        // following until the pointer has actually travelled.
-        if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) < 3) return
-        take({
-          scale: d.cam.scale,
-          x: d.cam.x + (e.clientX - d.x),
-          y: d.cam.y + (e.clientY - d.y),
-        })
-      }}
-      onPointerUp={() => {
-        drag.current = null
-      }}
-      onPointerLeave={() => {
-        drag.current = null
-      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={onPointerEnd}
+      onPointerLeave={onPointerEnd}
       onWheel={(e) => {
-        const rect = wrapRef.current?.getBoundingClientRect()
-        zoomBy(
-          e.deltaY < 0 ? 1.12 : 1 / 1.12,
-          e.clientX - (rect?.left ?? 0),
-          e.clientY - (rect?.top ?? 0),
-        )
+        const at = local(e.clientX, e.clientY)
+        zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, at.x, at.y)
       }}
     >
       <svg width="100%" height="100%" style={{ display: 'block', touchAction: 'none' }}>
@@ -295,11 +400,10 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
             <path
               key={edge.key}
               d={edge.d}
-              fill="none"
-              stroke={edge.onPath ? ACCENT : EDGE}
               strokeWidth={edge.onPath ? 2.4 : 1.4}
               vectorEffect="non-scaling-stroke"
               opacity={edge.onPath ? 1 : dimmed ? 0.45 : 0.8}
+              style={{ fill: 'none', stroke: edge.onPath ? ACCENT : EDGE }}
             />
           ))}
 
@@ -324,6 +428,9 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                 style={{ cursor: 'pointer', transition: glide }}
                 onClick={(e) => {
                   e.stopPropagation()
+                  // A pan that happened to start on a node is not a choice of
+                  // that node - which on a touchscreen is most of them.
+                  if (panned.current) return
                   onSelect(isSelected ? null : node.id)
                 }}
               >
@@ -333,17 +440,17 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                     (node.observation ? `\n${node.observation}` : '')}
                 </title>
 
-                <rect width={NODE_W} height={NODE_H} rx={7} fill={SURFACE} />
+                <rect width={NODE_W} height={NODE_H} rx={7} style={{ fill: SURFACE }} />
                 <rect
                   width={NODE_W}
                   height={NODE_H}
                   rx={7}
-                  fill={alpha(color, labelled ? 0.13 : 0.82)}
-                  stroke={
-                    isSelected ? INK : focused ? ACCENT : solved ? GOOD : color
-                  }
                   strokeWidth={isSelected ? 2.4 : focused ? 2.2 : 1.2}
                   vectorEffect="non-scaling-stroke"
+                  style={{
+                    fill: alpha(color, labelled ? 0.13 : 0.82),
+                    stroke: isSelected ? INK : focused ? ACCENT : solved ? GOOD : color,
+                  }}
                 />
 
                 {detailed ? (
@@ -356,21 +463,27 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                       width={Math.max(0, (NODE_W - 2) * Math.min(state.value, 1))}
                       height={3}
                       rx={1.5}
-                      fill={color}
+                      style={{ fill: color }}
                     />
-                    <text x={8} y={16} fill={INK} fontSize={11} fontWeight={600}>
+                    <text x={8} y={16} fontSize={11} fontWeight={600} style={{ fill: INK }}>
                       {truncate(node.label, 14)}
                     </text>
-                    <text x={8} y={31} fill={INK_DIM} fontSize={9.5} fontFamily={MONO}>
+                    <text
+                      x={8}
+                      y={31}
+                      fontSize={9.5}
+                      fontFamily={MONO}
+                      style={{ fill: INK_DIM }}
+                    >
                       {`V ${num(state.value)}  N ${state.visits}`}
                     </text>
                     <text
                       x={NODE_W - 7}
                       y={15}
-                      fill={INK_FAINT}
                       fontSize={9}
                       fontFamily={MONO}
                       textAnchor="end"
+                      style={{ fill: INK_FAINT }}
                     >
                       {`#${node.id}`}
                     </text>
@@ -382,18 +495,20 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                           width={27}
                           height={13}
                           rx={6.5}
-                          fill={alpha(solved ? GOOD : color, 0.22)}
-                          stroke={solved ? GOOD : color}
                           strokeWidth={1}
                           vectorEffect="non-scaling-stroke"
+                          style={{
+                            fill: alpha(solved ? GOOD : color, 0.22),
+                            stroke: solved ? GOOD : color,
+                          }}
                         />
                         <text
                           x={NODE_W - 20.5}
                           y={31.5}
-                          fill={solved ? GOOD : color}
                           fontSize={9}
                           fontFamily={MONO}
                           textAnchor="middle"
+                          style={{ fill: solved ? GOOD : color }}
                         >
                           {num(state.reward)}
                         </text>
@@ -408,15 +523,15 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                       width={Math.max(0, (NODE_W - 2) * Math.min(state.value, 1))}
                       height={3}
                       rx={1.5}
-                      fill={color}
+                      style={{ fill: color }}
                     />
                     <text
                       x={NODE_W / 2}
                       y={NODE_H / 2 + labelFont * 0.34}
-                      fill={INK}
                       fontSize={labelFont}
                       fontWeight={600}
                       textAnchor="middle"
+                      style={{ fill: INK }}
                     >
                       {truncate(node.label, Math.max(3, labelRoom))}
                     </text>
@@ -430,16 +545,20 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
                       cx={NODE_W / 2}
                       cy={NODE_H / 2}
                       r={NODE_H / 3}
-                      fill={SURFACE}
-                      stroke={GOOD}
                       strokeWidth={2.5}
                       vectorEffect="non-scaling-stroke"
+                      style={{ fill: SURFACE, stroke: GOOD }}
                     />
                   )
                 )}
 
                 {state.reflected && (
-                  <circle cx={6} cy={6} r={detailed ? 3.2 : 3.2 / cam.scale} fill={VIOLET}>
+                  <circle
+                    cx={6}
+                    cy={6}
+                    r={detailed ? 3.2 : 3.2 / cam.scale}
+                    style={{ fill: VIOLET }}
+                  >
                     <title>A reflection was written from this node</title>
                   </circle>
                 )}
@@ -464,18 +583,18 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
         }}
       >
         <Tooltip title="Zoom out">
-          <IconButton size="small" onClick={() => zoomBy(1 / 1.25)}>
+          <IconButton size={coarse ? 'medium' : 'small'} onClick={() => zoomBy(1 / 1.25)}>
             <RemoveIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Tooltip title="Fit the whole tree">
-          <IconButton size="small" onClick={() => take(frame(whole))}>
+          <IconButton size={coarse ? 'medium' : 'small'} onClick={() => take(frame(whole))}>
             <ZoomOutMapIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Tooltip title={free ? 'Follow the search again' : 'Following the search'}>
           <IconButton
-            size="small"
+            size={coarse ? 'medium' : 'small'}
             onClick={() => {
               setFree(false)
               setCamera(null)
@@ -486,7 +605,7 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
           </IconButton>
         </Tooltip>
         <Tooltip title="Zoom in">
-          <IconButton size="small" onClick={() => zoomBy(1.25)}>
+          <IconButton size={coarse ? 'medium' : 'small'} onClick={() => zoomBy(1.25)}>
             <AddIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -504,24 +623,38 @@ export default function TreeView({ trace, view, selected, onSelect }: Props) {
           boxShadow: CARD_SHADOW,
           px: 1,
           py: 0.4,
+          // Only where it could outgrow the canvas: an unconditional cap
+          // rounds the box differently on a pane that never needed one.
+          ...(tight && { maxWidth: 'calc(100% - 24px)' }),
         }}
       >
-        <Typography variant="caption" sx={{ color: INK_FAINT }}>
+        <Typography
+          variant="caption"
+          noWrap={tight}
+          sx={{ color: INK_FAINT, ...(tight && { display: 'block' }) }}
+        >
           <Box component="span" sx={{ color: INK_DIM, fontFamily: MONO }}>
             {view.visible.length}/{trace.nodes.length}
           </Box>{' '}
-          nodes ·{' '}
-          {free ? 'drag to pan, scroll to zoom' : 'the view follows the search'}
-          {!detailed && ' · click a node for its detail'}
+          nodes
+          {/* On a narrow canvas the hint is what gives way: the gestures are
+              the ones a touchscreen already teaches. */}
+          {!tight && (
+            <>
+              {' · '}
+              {free ? 'drag to pan, scroll to zoom' : 'the view follows the search'}
+              {!detailed && ' · click a node for its detail'}
+            </>
+          )}
         </Typography>
       </Box>
 
-      <Legend />
+      {size.h >= TIGHT_H && <Legend tight={tight} />}
     </Paper>
   )
 }
 
-function Legend() {
+function Legend({ tight }: { tight: boolean }) {
   const stops = [0, 0.25, 0.5, 0.75, 1]
   return (
     <Stack
@@ -545,18 +678,23 @@ function Legend() {
         </Typography>
         <Box sx={{ display: 'flex', borderRadius: 0.5, overflow: 'hidden' }}>
           {stops.map((s) => (
-            <Box key={s} sx={{ width: 16, height: 8, bgcolor: valueColor(s) }} />
+            <Box key={s} sx={{ width: tight ? 12 : 16, height: 8, bgcolor: valueColor(s) }} />
           ))}
         </Box>
         <Typography variant="caption" sx={{ color: INK_FAINT }}>
           0 → 1
         </Typography>
       </Stack>
-      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-        <Swatch color={ACCENT} label="this step" />
-        <Swatch color={VIOLET} label="reflected" />
-        <Swatch color={GOOD} label="solved" outline />
-      </Stack>
+      {/* The ramp explains the colour every node carries, so it stays; the
+          three conventions below it share a row with the zoom controls and
+          are the ones that have to go when the canvas is a phone's wide. */}
+      {!tight && (
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+          <Swatch color={ACCENT} label="this step" />
+          <Swatch color={VIOLET} label="reflected" />
+          <Swatch color={GOOD} label="solved" outline />
+        </Stack>
+      )}
     </Stack>
   )
 }

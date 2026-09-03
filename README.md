@@ -60,8 +60,8 @@ on `PATH`. Fonts need nothing installed - they ship in the repository.
 .
 ├── index.html  package.json  vite.config.ts  tsconfig*.json
 ├── src/                      the trace viewer (React 19 · TypeScript · Vite · MUI)
-│   ├── App.tsx               state, loading, playback, drag-and-drop
-│   ├── theme.ts              the palette, shared with the video
+│   ├── App.tsx               state, loading, playback, layout, drag-and-drop
+│   ├── theme.ts              both palettes; the light one is the video's
 │   ├── types.ts              the lats-trace/1 schema in TypeScript
 │   ├── lib/                  validation, tidy tree layout, formatting
 │   └── components/           tree, timeline, operation panels, node detail
@@ -321,15 +321,31 @@ npx tsc -b               # typecheck only
 
 React 19 · TypeScript · Vite · MUI. Nothing is loaded from a remote host.
 
-The viewer is light and the video is dark, because they are read in different
-places — one next to a paper, projected in a lit room and screenshotted into
-slides, the other on a screen in the dark. What they share is the colour
-*grammar*, retuned in `src/theme.ts` for a light ground: blue for the
-algorithm, amber for whatever you should be looking at, green for high value,
-red for failure, violet for reflection, teal for the environment. Every hue
-clears 4.5:1 against both the page and a card, so a number that carries meaning
-is never the faint one on the screen.
+The viewer opens light and the video is dark, because they are read in
+different places — one next to a paper, projected in a lit room and
+screenshotted into slides, the other on a screen in the dark. What they share
+is the colour *grammar*, retuned in `src/theme.ts` for a light ground: blue for
+the algorithm, amber for whatever you should be looking at, green for high
+value, red for failure, violet for reflection, teal for the environment. Every
+hue clears 4.5:1 against both the page and a card, so a number that carries
+meaning is never the faint one on the screen.
 
+- **Reads in the dark too.** The moon in the app bar swaps to a dark ground and
+  the choice is remembered, but it is never guessed from the operating system:
+  a teaching tool that opened dark next to a printed paper would be wrong more
+  often than right. Dark is not an inversion — the hues and the value ramp are
+  re-picked for a dark card the way the light ones were picked for paper, so
+  the same 4.5:1 promise holds in both. Every token is a CSS variable under
+  `data-theme` on `<html>`, so switching repaints without re-rendering anything.
+- **Fits a phone.** Above about 1100px the tree and the panel sit side by side.
+  Narrow and upright — a tablet in portrait — stacks them. On a handset there
+  is no honest way to show both, so they become two tabs over a shared
+  transport: the tree keeps every pixel it can get, tapping a node takes you to
+  its detail, the six operations wrap to two rows of three rather than shrink
+  past reading, and the task header folds up to one line. A handset held
+  sideways gets the small-screen chrome beside the side-by-side layout, because
+  there the scarce dimension is height. Drag to pan, pinch to zoom; a drag that
+  crossed a node does not count as choosing it.
 - **Introduces itself.** A four-stop tour on load points at the trace picker,
   the task and its settings, the transport, and the explanation panel. It runs
   once per page load and nothing about it is remembered between visits — this
@@ -342,11 +358,12 @@ is never the faint one on the screen.
   that exist at the current step and the camera follows the operation being
   explained, so a forty-five node search stays readable from its first step
   instead of being drawn at the zoom its last step needs. Pan or zoom and the
-  camera hands over; the crosshair gives it back, and the arrows button fits
-  the whole tree. Zooming out gives up detail one piece at a time — the full
-  card, then a name held at a fixed size on screen and truncated to what the
-  shrinking card can hold, then a bare value-coloured tile once even that will
-  not fit, so the tree reads as a shape. Nothing ever blanks all at once.
+  camera hands over — mouse wheel, or two fingers — the crosshair gives it
+  back, and the arrows button fits the whole tree. Zooming out gives up detail
+  one piece at a time — the full card, then a name held at a fixed size on
+  screen and truncated to what the shrinking card can hold, then a bare
+  value-coloured tile once even that will not fit, so the tree reads as a
+  shape. Nothing ever blanks all at once.
 - **Shows the arithmetic behind each operation.** Selection draws the UCT
   tug-of-war as stacked bars — exploitation against the exploration bonus —
   with a live `w` slider; drag it and the winning branch can flip. Evaluation
@@ -364,9 +381,13 @@ is never the faint one on the screen.
 `traces-manifest.json` served beside them. The picker reads that index for its
 grouping, its ordering and the one-line note under each name.
 
-**Changing it.** `src/theme.ts` holds the palette, the type scale and the value
-ramp; it mirrors `scripts/create_video/theme.py`, so change them together or the
-video and the viewer stop matching. A new operation needs an entry in `Op` and
+**Changing it.** `src/theme.ts` holds both palettes, the type scale and the
+value ramp; the light one mirrors `scripts/create_video/theme.py`, so change
+them together or the video and the viewer stop matching. A new colour belongs
+in the `Token` union and in both palettes — a literal in a component is a
+colour that cannot follow the mode, and one reaching SVG has to go through
+`style` rather than a `fill` attribute, which is not somewhere every browser
+resolves `var()`. A new operation needs an entry in `Op` and
 `OPS` in `types.ts`, a colour in `OP_COLOR`, a `case` in `OperationPanel`, and
 an entry in `VALID_OPS` in `lib/validate.ts`. A new task's node detail needs
 nothing: `NodeDetail.tsx` formats keys it does not recognise as JSON.

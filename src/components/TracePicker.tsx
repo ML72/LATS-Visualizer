@@ -15,10 +15,12 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
 import ListSubheader from '@mui/material/ListSubheader'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 
@@ -43,6 +45,9 @@ interface Props {
   disabled?: boolean
   onSelect: (key: string) => void
   onUpload: (files: FileList | null) => void
+  /** Phone: a row of its own under the app bar, so the select takes the width
+      and the upload button gives up its label rather than its target. */
+  compact?: boolean
 }
 
 /** One environment's worth of traces, in the order they should be read. */
@@ -91,6 +96,7 @@ export default function TracePicker({
   disabled,
   onSelect,
   onUpload,
+  compact,
 }: Props) {
   const bundled = sources.filter((s) => s.kind === 'bundled')
   const uploaded = sources.filter((s) => s.kind === 'uploaded')
@@ -106,14 +112,30 @@ export default function TracePicker({
     items.push(...uploaded.map(renderItem))
   }
 
+  const upload = (
+    <input
+      hidden
+      type="file"
+      accept="application/json,.json"
+      multiple
+      onChange={(e) => {
+        onUpload(e.target.files)
+        // Allow re-selecting the same file after fixing it on disk.
+        e.target.value = ''
+      }}
+    />
+  )
+
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-      <Typography
-        variant="subtitle2"
-        sx={{ color: INK_FAINT, textTransform: 'uppercase', display: { xs: 'none', sm: 'block' } }}
-      >
-        Trace
-      </Typography>
+      {!compact && (
+        <Typography
+          variant="subtitle2"
+          sx={{ color: INK_FAINT, textTransform: 'uppercase', display: { xs: 'none', sm: 'block' } }}
+        >
+          Trace
+        </Typography>
+      )}
 
       <Select
         size="small"
@@ -121,9 +143,13 @@ export default function TracePicker({
         displayEmpty
         disabled={disabled || sources.length === 0}
         onChange={(e) => onSelect(String(e.target.value))}
-        MenuProps={{ slotProps: { paper: { sx: { maxHeight: 520, mt: 0.5 } } } }}
+        MenuProps={{
+          slotProps: {
+            paper: { sx: { maxHeight: 520, mt: 0.5, maxWidth: 'calc(100vw - 24px)' } },
+          },
+        }}
         renderValue={() => (
-          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', minWidth: 0 }}>
             {selected && (
               <Box
                 sx={{
@@ -135,12 +161,19 @@ export default function TracePicker({
                 }}
               />
             )}
-            <Typography sx={{ fontFamily: MONO, fontSize: '0.78rem', color: INK }}>
+            <Typography
+              noWrap
+              sx={{ fontFamily: MONO, fontSize: '0.78rem', color: INK, minWidth: 0 }}
+            >
               {selected ? selected.label : 'no trace loaded'}
             </Typography>
           </Stack>
         )}
-        sx={{ minWidth: 268, '& .MuiSelect-select': { py: 0.7 } }}
+        sx={
+          compact
+            ? { flex: 1, minWidth: 0, '& .MuiSelect-select': { py: 0.7 } }
+            : { minWidth: 268, '& .MuiSelect-select': { py: 0.7 } }
+        }
       >
         {items.length ? (
           items
@@ -151,26 +184,35 @@ export default function TracePicker({
         )}
       </Select>
 
-      <Button
-        component="label"
-        size="small"
-        variant="outlined"
-        startIcon={<UploadFileIcon />}
-        sx={{ whiteSpace: 'nowrap', color: INK_DIM, borderColor: STROKE }}
-      >
-        Upload
-        <input
-          hidden
-          type="file"
-          accept="application/json,.json"
-          multiple
-          onChange={(e) => {
-            onUpload(e.target.files)
-            // Allow re-selecting the same file after fixing it on disk.
-            e.target.value = ''
-          }}
-        />
-      </Button>
+      {compact ? (
+        <Tooltip title="Upload a trace" arrow>
+          <IconButton
+            component="label"
+            size="small"
+            aria-label="upload a trace"
+            sx={{
+              flexShrink: 0,
+              color: INK_DIM,
+              border: `1px solid ${STROKE}`,
+              borderRadius: 1,
+            }}
+          >
+            <UploadFileIcon fontSize="small" />
+            {upload}
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Button
+          component="label"
+          size="small"
+          variant="outlined"
+          startIcon={<UploadFileIcon />}
+          sx={{ whiteSpace: 'nowrap', color: INK_DIM, borderColor: STROKE }}
+        >
+          Upload
+          {upload}
+        </Button>
+      )}
     </Stack>
   )
 }
@@ -221,7 +263,7 @@ function renderItem(source: Source) {
         )}
       </Stack>
       {source.note && (
-        <Box sx={{ maxWidth: 470, whiteSpace: 'normal' }}>
+        <Box sx={{ maxWidth: 'min(470px, calc(100vw - 72px))', whiteSpace: 'normal' }}>
           <Typography variant="caption" sx={{ color: INK_DIM, lineHeight: 1.45 }}>
             {source.note}
           </Typography>

@@ -20,7 +20,18 @@ import Portal from '@mui/material/Portal'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
-import { ACCENT, CARD_SHADOW, INK, INK_DIM, INK_FAINT, PRIMARY, STROKE, SURFACE } from '../theme'
+import {
+  ACCENT,
+  CARD_SHADOW,
+  INK,
+  INK_DIM,
+  INK_FAINT,
+  PRIMARY,
+  RING,
+  SCRIM,
+  STROKE,
+  SURFACE,
+} from '../theme'
 
 export interface TourStop {
   /** Stable key, and the ref that finds the thing being pointed at. */
@@ -43,9 +54,6 @@ interface Rect {
 
 /** Breathing room between the highlight and the thing it highlights. */
 const HALO = 8
-/** The scrim, and the ring on it. Amber, but keyed to a dark ground. */
-const SCRIM = 'rgba(15, 23, 42, 0.55)'
-const RING = '#F59E0B'
 const CARD_W = 330
 const GAP = 14
 const MARGIN = 12
