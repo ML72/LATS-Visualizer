@@ -1,12 +1,12 @@
 {
   "schema": "lats-trace/1",
-  "name": "openai_game-of-24_hard",
+  "name": "openai_game-of-24-hard",
   "generated_by": {
     "package": "run_lats",
     "version": "1.0.0"
   },
   "task": {
-    "id": "game-of-24_hard",
+    "id": "game-of-24-hard",
     "family": "game",
     "title": "Game of 24, the hard one",
     "prompt": "Use 6, 9, 9, 10 exactly once each, with + - * / and any bracketing, to make 24.",
@@ -2276,7 +2276,7 @@
       "summary": "Game of 24, the hard one. The search starts from an empty state; reward is 1 if the final value is exactly 24 and every number was used once, else 0.",
       "detail": {
         "task": {
-          "id": "game-of-24_hard",
+          "id": "game-of-24-hard",
           "family": "game",
           "title": "Game of 24, the hard one",
           "prompt": "Use 6, 9, 9, 10 exactly once each, with + - * / and any bracketing, to make 24.",

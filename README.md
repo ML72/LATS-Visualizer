@@ -2,12 +2,10 @@
 
 A trace generator and visualizer for *Language Agent Tree Search* (LATS; Zhou, Yan,
 Shlapentokh-Rothman, Wang and Wang, ICML 2024,
-[arXiv:2310.04406](https://arxiv.org/abs/2310.04406)).
-
-Two pieces, joined by one file format. `scripts/run_lats.py` searches a real
-environment and records what it did as a **trace**; the web app at the root of this
+[arXiv:2310.04406](https://arxiv.org/abs/2310.04406)). `scripts/run_lats.py` searches a real
+environment and records what it did as an **execution trace**; the web app at the root of this
 repository replays that trace one operation at a time, the tree growing as the
-search grew, with the arithmetic behind each operation beside it.
+search grows, with the logic and arithmetic behind each operation visualized as well.
 
 > **The default path runs offline with no API key.** The default policy is a
 > seeded stand-in, so the same command always writes the same trace, byte for
@@ -21,17 +19,17 @@ search grew, with the arithmetic behind each operation beside it.
 ## Quick start
 
 ```
-# the viewer - this alone needs no Python
+# The viewer - this alone needs no Python
 npm install
-npm run dev                       # open the URL it prints
+npm run dev                       # open the URL specified
 
-# the search
+# The search
 python -m venv .venv
 .venv\Scripts\activate            # Windows
 source .venv/bin/activate         # macOS / Linux
 pip install -r requirements.txt   # only the real model and the video need these
 
-python scripts/run_lats.py        # a search run, into results/lats-traces/
+python scripts/run_lats.py        # search run, saved in results/lats_traces/
 ```
 
 The viewer opens on the traces committed in `public/traces/`, so it has something
@@ -46,7 +44,7 @@ nothing beyond the standard library, so a search runs before you install anythin
 python scripts/run_lats.py                     # every bundled preset
 python scripts/run_lats.py --list              # tasks and presets
 python scripts/run_lats.py --task game-of-24   # one task, its own defaults
-python scripts/run_lats.py --task game-of-24 --w 0 --seed 3 --name greedy
+python scripts/run_lats.py --task game-of-24 --w 0 --seed 3 --name game-of-24_greedy
 python scripts/run_lats.py --publish           # refresh public/traces/
 ```
 
@@ -78,9 +76,13 @@ from `--llm` rather than from anything you type, so a trace cannot be mislabelle
 else there alone, so a published OpenAI trace survives it. To add one:
 
 ```
-python scripts/run_lats.py --task game-of-24_hard --llm openai --publish \
+python scripts/run_lats.py --task game-of-24-hard --llm openai --publish \
     --note "what this trace is for; the picker shows it under the name"
 ```
+
+`--promote results/lats-traces/<run>/traces/<trace>.json` publishes a run you
+already have, without searching again — a real-model run costs money and minutes,
+and deciding after the fact that it is worth shipping should not mean paying twice.
 
 ### The four environments
 
@@ -97,7 +99,7 @@ the bug, and the fix is a different branch.
 scores a move by how *tidy* the result looks, which is a plausible heuristic and
 frequently wrong. That gap is what backpropagation exists to close.
 
-**`game-of-24_hard`** — the same environment on 6, 9, 9, 10, chosen by sweeping
+**`game-of-24-hard`** — the same environment on `6, 9, 9, 10`, chosen by sweeping
 every four-number puzzle for the one that punishes a value function hardest. Every
 solution ends `9 + 15`, and the only ways to reach 15 are a fraction or
 `9 * 10 = 90` — a number far past the target. The heuristic's **twelve best-looking
@@ -129,17 +131,17 @@ in rather than regenerated.
 | `mock_merge-intervals`           | mock   | yes    | 5     | 13    | the programming setting, simulation skipped               |
 | `mock_multihop-qa`               | mock   | yes    | 14    | 13    | two-hop retrieval with a distractor                       |
 | `mock_multihop-qa_no-reflection` | mock   | yes    | 14    | 12    | ablation: reflection off                                  |
-| `mock_game-of-24_hard`           | mock   | **no** | 75    | 98    | the hard puzzle, and why more search does not help        |
+| `mock_game-of-24-hard`           | mock   | **no** | 75    | 98    | the hard puzzle, and why more search does not help        |
 | `openai_game-of-24`              | gpt-5  | yes    | 16    | 7     | the short one: a strong policy needs no search at all     |
 | `openai_multihop-qa`             | gpt-5  | yes    | 13    | 13    | the whole loop: wrong commit, reflection, recovery        |
-| `openai_game-of-24_hard`         | gpt-5  | **no** | 110   | 98    | correct search over a tree that cannot contain the answer |
-| `openai_game-of-24_hard_wide`    | gpt-5  | yes    | 151   | 49    | the same, with `--n 12`: one winning move gets proposed   |
+| `openai_game-of-24-hard`         | gpt-5  | **no** | 110   | 98    | correct search over a tree that cannot contain the answer |
+| `openai_game-of-24-hard_wide`    | gpt-5  | yes    | 151   | 49    | the same, with `--n 12`: one winning move gets proposed   |
 
-* `mock_game-of-24_no-value` is solved only in the bookkeeping sense. A winning node
-is *built* on iteration 1, as a by-product of a rollout, and selection never walks
-back into it: all twelve iterations backpropagate a reward of 0 and the run stops on
-its budget, not on a solution. The final `solved` flag comes from a scan over every
-node that carries a reward — a search can contain an answer it never noticed.
+> \* `mock_game-of-24_no-value` is solved only in the bookkeeping sense. A winning node
+> is *built* on iteration 1, as a by-product of a rollout, and selection never walks
+> back into it: all twelve iterations backpropagate a reward of 0 and the run stops on
+> its budget, not on a solution. The final `solved` flag comes from a scan over every
+> node that carries a reward — a search can contain an answer it never noticed.
 
 Three things the set is arranged to show.
 
@@ -155,11 +157,11 @@ one: it builds the winning node and walks past it, and spends every iteration it
 backpropagating zeros.
 
 **Search cannot repair the policy — but sample width can.** Read the three
-`game-of-24_hard` traces in order. A naive arithmetic heuristic and a frontier
+`game-of-24-hard` traces in order. A naive arithmetic heuristic and a frontier
 reasoning model fail the same way: both expand the root into five tidy-looking
 moves, and neither set contains any of the five moves that can reach 24. Selection,
 backpropagation and reflection then run flawlessly over a tree with no solution in
-it. `openai_game-of-24_hard_wide` moves exactly one knob — `--n 12` instead of 5 —
+it. `openai_game-of-24-hard_wide` moves exactly one knob — `--n 12` instead of 5 —
 and `9 * 10 = 90` finally appears among the root's children. It is the *least*
 attractive of the twelve, and it sits at the bottom of the exploitation column for
 seven iterations until the exploration bonus reaches 1.44, the largest term on the
@@ -177,7 +179,7 @@ cp .env.example .env                    # then fill in OPENAI_API_KEY
 export OPENAI_API_KEY=sk-...            # or macOS / Linux
 $env:OPENAI_API_KEY = 'sk-...'          # or PowerShell
 
-python scripts/run_lats.py --task game-of-24_hard --llm openai
+python scripts/run_lats.py --task game-of-24-hard --llm openai
 ```
 
 Anything already exported wins over `.env`, and only the variable *names* are ever
@@ -300,9 +302,10 @@ validated in `src/lib/validate.ts` — those three files are the whole contract.
 {
   "schema": "lats-trace/1",
   "name":   "mock_game-of-24",
+  "generated_by": { "package", "version" },
   "task":   { "id", "family", "title", "prompt", "reward", "context" },
   "config": { "n", "w", "lambda", "iterations", "max_depth", "simulate",
-              "reflect", "solved_at", "seed" },
+              "reflect", "reflect_threshold", "solved_at", "seed" },
   "policy": { "kind", "name", "model", "seed", "calls", "tokens",
               "tokens_are_estimated" },
   "result": { "solved", "best_reward", "best_node", "best_path", "nodes",

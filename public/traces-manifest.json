@@ -51,7 +51,7 @@
       "nodes": 16,
       "steps": 7,
       "policy": "openai",
-      "note": "gpt-5 on the easy puzzle, and the honest counterexample. It proposes a winning first move straight away, the rollout confirms it, and the search is over in one iteration - nothing is ever backtracked, marked down or reflected on. When the policy already knows the answer, tree search buys nothing but tokens. Read it next to mock_game_of_24, which needs five iterations and forty-five nodes to reach the same place."
+      "note": "gpt-5 on the easy puzzle, and the honest counterexample. It proposes a winning first move straight away, the rollout confirms it, and the search is over in one iteration - nothing is ever backtracked, marked down or reflected on. When the policy already knows the answer, tree search buys nothing but tokens. Read it next to mock_game-of-24, which needs five iterations and forty-five nodes to reach the same place."
     },
     {
       "file": "mock_merge-intervals.json",
@@ -106,9 +106,9 @@
       "note": "gpt-5 on two-hop retrieval: the whole LATS loop in thirteen steps. The first trajectory commits to ECML 2006, the environment scores it 0, backpropagation marks that branch down and reflection writes the wrong answer off by name. The second iteration selects elsewhere and lands on the right document. The shortest trace here that still shows every operation doing its job."
     },
     {
-      "file": "mock_game-of-24_hard.json",
-      "name": "mock_game-of-24_hard",
-      "task": "game-of-24_hard",
+      "file": "mock_game-of-24-hard.json",
+      "name": "mock_game-of-24-hard",
+      "task": "game-of-24-hard",
       "title": "Game of 24, the hard one",
       "family": "game",
       "solved": false,
@@ -119,9 +119,9 @@
       "note": "6, 9, 9, 10, where the twelve best-looking first moves are all dead ends and every solution ends in 9 + 15. The offline policy rates a fraction badly and never proposes the moves that reach 15, so sixteen iterations of correct search find nothing. Search cannot choose what the policy never suggests - compare the OpenAI run on the same puzzle."
     },
     {
-      "file": "openai_game-of-24_hard_wide.json",
-      "name": "openai_game-of-24_hard_wide",
-      "task": "game-of-24_hard",
+      "file": "openai_game-of-24-hard_wide.json",
+      "name": "openai_game-of-24-hard_wide",
+      "task": "game-of-24-hard",
       "title": "Game of 24, the hard one",
       "family": "game",
       "solved": true,
@@ -129,12 +129,12 @@
       "nodes": 151,
       "steps": 49,
       "policy": "openai",
-      "note": "The same model and the same puzzle as openai_game_of_24_hard, with one knob moved: twelve samples per expansion instead of five. That is enough for 9*10=90 to appear among the root's children - the only winning move gpt-5 proposes - and everything else follows from the search. Watch the exploitation column: 9*10 sits at the bottom of it for seven iterations while selection works through 6*9, 9/9, 6+10, 10-9, 10-6 and 6+9, each returning reward 0 and each marked down by backpropagation. On iteration eight the exploration bonus reaches 1.44, the largest term on the board, and carries selection into the branch nothing liked. Reward 1. The UCT tug-of-war doing its whole job, one step at a time."
+      "note": "The same model and the same puzzle as openai_game-of-24-hard, with one knob moved: twelve samples per expansion instead of five. That is enough for 9*10=90 to appear among the root's children - the only winning move gpt-5 proposes - and everything else follows from the search. Watch the exploitation column: 9*10 sits at the bottom of it for seven iterations while selection works through 6*9, 9/9, 6+10, 10-9, 10-6 and 6+9, each returning reward 0 and each marked down by backpropagation. On iteration eight the exploration bonus reaches 1.44, the largest term on the board, and carries selection into the branch nothing liked. Reward 1. The UCT tug-of-war doing its whole job, one step at a time."
     },
     {
-      "file": "openai_game-of-24_hard.json",
-      "name": "openai_game-of-24_hard",
-      "task": "game-of-24_hard",
+      "file": "openai_game-of-24-hard.json",
+      "name": "openai_game-of-24-hard",
+      "task": "game-of-24-hard",
       "title": "Game of 24, the hard one",
       "family": "game",
       "solved": false,
