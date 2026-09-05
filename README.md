@@ -1,8 +1,6 @@
 # Language Agent Tree Search (LATS) Visualizer
 
-A trace generator and visualizer for *Language Agent Tree Search* (LATS; Zhou, Yan,
-Shlapentokh-Rothman, Wang and Wang, ICML 2024,
-[arXiv:2310.04406](https://arxiv.org/abs/2310.04406)). `scripts/run_lats.py` searches a real
+A trace generator and visualizer for *Language Agent Tree Search* (LATS; Zhou et al., ICML 2024 [arXiv:2310.04406](https://arxiv.org/abs/2310.04406)). `scripts/run_lats.py` searches a real
 environment and records what it did as an **execution trace**; the web app at the root of this
 repository replays that trace one operation at a time, the tree growing as the
 search grows, with the logic and arithmetic behind each operation visualized as well.
