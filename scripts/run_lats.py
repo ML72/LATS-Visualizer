@@ -5,7 +5,7 @@ Run Language Agent Tree Search and write a trace the viewer can replay.
     python scripts/run_lats.py                      # every bundled preset
     python scripts/run_lats.py --list               # what can be run
     python scripts/run_lats.py --task game-of-24   # one task, its own defaults
-    python scripts/run_lats.py --task game-of-24 --w 0 --seed 3 --name greedy
+    python scripts/run_lats.py --task game-of-24 --w 0 --seed 3 --name game-of-24_greedy
     python scripts/run_lats.py --publish            # refresh public/traces/
 
 Traces land in a timestamped directory under ``results/lats-traces/``, which is
@@ -148,8 +148,8 @@ PRESETS: list[dict] = [
         "overrides": {"reflect": False},
     },
     {
-        "name": "game-of-24_hard",
-        "task": "game-of-24_hard",
+        "name": "game-of-24-hard",
+        "task": "game-of-24-hard",
         "note": (
             "6, 9, 9, 10, where the twelve best-looking first moves are all dead "
             "ends and every solution ends in 9 + 15. The offline policy rates a "
@@ -274,8 +274,8 @@ def preset_order(entries: list[dict]) -> list[dict]:
     def rank(base: str) -> int:
         """The curated index, matching on the longest preset name that fits.
 
-        A variant like ``game-of-24_hard_wide`` is not a preset itself, but it
-        belongs beside ``game-of-24_hard`` rather than at the end of the list.
+        A variant like ``game-of-24-hard_wide`` is not a preset itself, but it
+        belongs beside ``game-of-24-hard`` rather than at the end of the list.
         """
         if base in order:
             return order[base]

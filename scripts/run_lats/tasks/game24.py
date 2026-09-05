@@ -357,7 +357,7 @@ class Game24HardTask(Game24Task):
     recall instead of searching, which teaches nothing.
     """
 
-    id = "game-of-24_hard"
+    id = "game-of-24-hard"
     title = "Game of 24, the hard one"
 
     #: Twelve dead ends ahead of the first move that works, and five routes in.
